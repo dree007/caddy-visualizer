@@ -1,0 +1,35 @@
+name: caddy-visualizer
+services:
+  caddy-visualizer:
+    image: ghcr.io/dree007/caddy-visualizer:${VERSION:-1}
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:3000:3000"
+    env_file: .env
+    environment:
+      CADDY_ADMIN_URL: unix:///config/admin/admin.sock
+    read_only: true
+    volumes:
+      - data:/data
+      - ${CADDY_CADDYFILE:?set CADDY_CADDYFILE in .env}:/etc/caddy/Caddyfile
+      # Only these folders of Caddy's /config volume, not its autosave.json.
+      - type: volume
+        source: caddy_config
+        target: /config/manager
+        volume: { subpath: manager }
+      - type: volume
+        source: caddy_config
+        target: /config/admin
+        read_only: true
+        volume: { subpath: admin }
+      - type: volume
+        source: caddy_config
+        target: /config/logs
+        read_only: true
+        volume: { subpath: logs }
+
+volumes:
+  data:
+  caddy_config:
+    external: true
+    name: ${CADDY_CONFIG_VOLUME:-caddy_caddy_config}

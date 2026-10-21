@@ -1,0 +1,242 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: var(--font-display);
+  --font-display:
+    var(--font-inter-tight), var(--font-inter), ui-sans-serif, system-ui,
+    sans-serif;
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, Menlo, monospace;
+  --color-band: var(--band);
+  --color-stone: var(--stone);
+  --color-line-control: var(--line-control);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --color-violet-ink: var(--violet-ink);
+  --color-ember: var(--ember);
+  --color-ember-soft: var(--ember-soft);
+  --color-ember-ink: var(--ember-ink);
+  --shadow-soft-sm: var(--soft-sm);
+  --shadow-soft-md: var(--soft-md);
+  --shadow-soft-lg: var(--soft-lg);
+  --shadow-pressed: var(--pressed);
+  --shadow-ink: var(--ink-glow);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  /* Atelier Soft: 8 small · 12 inputs · 16 small cards · 24 cards · 32 hero. */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+}
+
+:root {
+  /* Atelier Soft on cream paper: a touch darker than eggshell, warm throughout. */
+  --background: #f5f0e7;
+  --band: #ede6da;
+  --card: #fbf8f2;
+  --stone: #e5dccf;
+  --foreground: #1b1712;
+  --card-foreground: #1b1712;
+  --popover: #fbf8f2;
+  --popover-foreground: #1b1712;
+  --primary: #1b1712;
+  --primary-foreground: #f8f4ec;
+  --secondary: #ede6da;
+  --secondary-foreground: #2b241d;
+  --muted: #ede6da;
+  --muted-foreground: #66594c;
+  --accent: #e9e1d4;
+  --accent-foreground: #1b1712;
+  --destructive: #b4321f;
+  --border: #e0d6c7;
+  --input: #94816c;
+  --line-control: #94816c;
+  --ring: #3a36ff;
+  --violet: #3a36ff;
+  --violet-soft: #e7e5fa;
+  --violet-ink: #2f2ae0;
+  --ember: #ff4a0d;
+  --ember-soft: #fbe2d5;
+  --ember-ink: #b3330a;
+  --soft-sm:
+    inset 0 1px 0 rgb(255 255 255 / 0.7), 0 0 0 1px rgb(70 52 32 / 0.07),
+    0 1px 2px rgb(70 52 32 / 0.06), 0 4px 10px rgb(70 52 32 / 0.05);
+  --soft-md:
+    inset 0 1px 0 rgb(255 255 255 / 0.7), 0 0 0 1px rgb(70 52 32 / 0.06),
+    0 2px 4px rgb(70 52 32 / 0.04), 0 12px 28px rgb(70 52 32 / 0.08);
+  --soft-lg:
+    0 0 0 1px rgb(70 52 32 / 0.05), 0 4px 8px rgb(70 52 32 / 0.05),
+    0 24px 56px rgb(70 52 32 / 0.14);
+  --pressed:
+    inset 0 2px 4px rgb(70 52 32 / 0.1), inset 0 0 0 1px rgb(70 52 32 / 0.07);
+  --ink-glow:
+    inset 0 1px 0 rgb(255 255 255 / 0.16), 0 1px 2px rgb(22 18 14 / 0.24),
+    0 6px 16px rgb(22 18 14 / 0.16);
+  --chart-1: #3a36ff;
+  --chart-2: #ff4a0d;
+  --chart-3: #94816c;
+  --chart-4: #66594c;
+  --chart-5: #2b241d;
+  /* Data viz: one series hue (violet) + fixed status colors. */
+  --viz-series: #3a36ff;
+  --viz-good: #0ca30c;
+  --viz-warning: #fab219;
+  --viz-critical: #d03b3b;
+  --viz-neutral: #898781;
+  --viz-grid: #e0d6c7;
+  --radius: 1rem;
+  --sidebar: #ede6da;
+  --sidebar-foreground: #1b1712;
+  --sidebar-primary: #1b1712;
+  --sidebar-primary-foreground: #f8f4ec;
+  --sidebar-accent: #e5dccf;
+  --sidebar-accent-foreground: #1b1712;
+  --sidebar-border: #e0d6c7;
+  --sidebar-ring: #3a36ff;
+}
+
+.dark {
+  /* Warm charcoal instead of near-black: the same paper, at dusk. */
+  --background: #25211c;
+  --band: #2c2722;
+  --card: #312b25;
+  --stone: #3b342d;
+  --foreground: #f1ebe1;
+  --card-foreground: #f1ebe1;
+  --popover: #352f28;
+  --popover-foreground: #f1ebe1;
+  --primary: #f1ebe1;
+  --primary-foreground: #25211c;
+  --secondary: #3b342d;
+  --secondary-foreground: #f1ebe1;
+  --muted: #2c2722;
+  --muted-foreground: #b8ab9b;
+  --accent: #3b342d;
+  --accent-foreground: #f1ebe1;
+  --destructive: #f08a74;
+  --border: #423a32;
+  --input: #8b7b6a;
+  --line-control: #8b7b6a;
+  --ring: #9b98ff;
+  --violet: #9b98ff;
+  --violet-soft: #37345a;
+  --violet-ink: #c3c1ff;
+  --ember: #ff7a45;
+  --ember-soft: #4a2e22;
+  --ember-ink: #ffb18e;
+  --soft-sm:
+    inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.18),
+    0 1px 2px rgb(0 0 0 / 0.2), 0 4px 10px rgb(0 0 0 / 0.14);
+  --soft-md:
+    inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.16),
+    0 2px 4px rgb(0 0 0 / 0.16), 0 12px 28px rgb(0 0 0 / 0.22);
+  --soft-lg:
+    0 0 0 1px rgb(0 0 0 / 0.2), 0 4px 8px rgb(0 0 0 / 0.2),
+    0 24px 56px rgb(0 0 0 / 0.36);
+  --pressed:
+    inset 0 2px 4px rgb(0 0 0 / 0.28), inset 0 0 0 1px rgb(0 0 0 / 0.16);
+  --ink-glow:
+    inset 0 1px 0 rgb(255 255 255 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3),
+    0 6px 16px rgb(0 0 0 / 0.24);
+  --chart-1: #7f7bff;
+  --chart-2: #ff7a45;
+  --chart-3: #8b7b6a;
+  --chart-4: #b8ab9b;
+  --chart-5: #f1ebe1;
+  --viz-series: #7f7bff;
+  --viz-grid: #423a32;
+  --sidebar: #2c2722;
+  --sidebar-foreground: #f1ebe1;
+  --sidebar-primary: #f1ebe1;
+  --sidebar-primary-foreground: #25211c;
+  --sidebar-accent: #3b342d;
+  --sidebar-accent-foreground: #f1ebe1;
+  --sidebar-border: #423a32;
+  --sidebar-ring: #9b98ff;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+    letter-spacing: 0.01em;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  /* Raised surface: the standard card. */
+  .surface {
+    @apply rounded-3xl bg-card text-card-foreground shadow-soft-md;
+  }
+  /* Flat band one step below the page, for grouped or secondary content. */
+  .surface-band {
+    @apply rounded-3xl bg-band;
+  }
+  /* Recessed track for segmented controls and inputs. */
+  .surface-pressed {
+    @apply rounded-full bg-stone shadow-pressed;
+  }
+  /* Native select/textarea in the input style: a soft recess. */
+  .field {
+    @apply rounded-md border border-line-control/60 bg-card shadow-pressed transition-[border-color,box-shadow] duration-200 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/35;
+  }
+  /* Read-only code and config blocks. */
+  .code-well {
+    @apply rounded-lg bg-band font-mono text-[0.8125rem] leading-relaxed;
+  }
+  .display {
+    @apply font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] md:text-[2.75rem];
+  }
+  .heading {
+    @apply font-display text-[1.375rem] leading-tight font-light tracking-[-0.015em];
+  }
+  .eyebrow {
+    @apply text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase;
+  }
+}

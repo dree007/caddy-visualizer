@@ -1,0 +1,15 @@
+.git
+.next
+node_modules
+coverage
+data
+secrets
+*.db
+*.db-*
+.env
+.env.*
+!.env.example
+Dockerfile
+release
+*.md
+
