@@ -92,6 +92,8 @@ docker compose pull && docker compose up -d
 - `ALLOW_INSECURE_LAN_HTTP=true` sends the password unencrypted: use it only in a trusted
   network and never expose port 3000 to the internet. Over HTTPS (e.g. through Caddy) set it to
   `false`.
+- Settings shows _No read permission_ for the access log? Caddy created the file before
+  `mode 644` was set: `docker exec caddy chmod 644 /config/logs/access.log`
 - Forgot the password? Set a new `ADMIN_INITIAL_PASSWORD` plus `ADMIN_RESET_PASSWORD=true`,
   run `docker compose up -d`, then remove both lines.
 

@@ -26,5 +26,13 @@ export function openDatabase(path: string): Db {
   // SQLite does not enforce foreign keys unless enabled per connection.
   sqlite.pragma("foreign_keys = ON");
   sqlite.pragma("busy_timeout = 5000");
+  if (path !== ":memory:") {
+    // The container's root filesystem is read-only (no writable /tmp): temp
+    // files (e.g. statement journals of large batches) go next to the database
+    // on the data volume, else SQLITE_IOERR_GETTEMPPATH.
+    sqlite.pragma(
+      `temp_store_directory = '${dirname(path).replaceAll("'", "''")}'`,
+    );
+  }
   return drizzle(sqlite, { schema });
 }

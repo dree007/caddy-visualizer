@@ -16,7 +16,7 @@ const PRUNE_EVERY_MS = 3600_000;
 
 export interface IngestionStatus {
   path: string;
-  state: "idle" | "missing" | "ok" | "error" | "passive";
+  state: "idle" | "missing" | "unreadable" | "ok" | "error" | "passive";
   lastRunAt: Date | null;
   lastStored: number;
   message?: string;
@@ -25,6 +25,18 @@ export interface IngestionStatus {
 const globalForIngestion = globalThis as unknown as {
   accessLogIngestion?: { timer: NodeJS.Timeout; status: IngestionStatus };
 };
+
+/** A file the manager may not read (Caddy created it before `mode 644`) gets its own state. */
+export function errorState(
+  error: unknown,
+): Pick<IngestionStatus, "state" | "message"> {
+  const errno = (error as NodeJS.ErrnoException | null)?.code;
+  if (errno === "EACCES" || errno === "EPERM") return { state: "unreadable" };
+  return {
+    state: "error",
+    message: error instanceof Error ? error.message : String(error),
+  };
+}
 
 export function ingestionStatus(): IngestionStatus | null {
   return globalForIngestion.accessLogIngestion?.status ?? null;
@@ -61,13 +73,13 @@ export function startIngestion(log: Pick<Console, "info" | "warn">): void {
         lastPrune = Date.now();
       }
     } catch (error) {
-      status.state = "error";
-      status.message = error instanceof Error ? error.message : String(error);
+      Object.assign(status, { message: undefined }, errorState(error));
     } finally {
       status.lastRunAt = new Date();
       if (status.state !== lastState) {
         const line = `[access-log] ${path}: ${status.state}${status.message ? ` (${status.message})` : ""}`;
-        if (status.state === "error") log.warn(line);
+        if (status.state === "error" || status.state === "unreadable")
+          log.warn(line);
         else log.info(line);
         lastState = status.state;
       }

@@ -15,7 +15,7 @@ export const en = {
     dashboard: {
       label: "Dashboard",
       short: "Overview",
-      intro: "Your sites and the last 24 hours at a glance.",
+      intro: "The last 24 hours and your sites at a glance.",
     },
     metrics: {
       label: "Metrics",
@@ -213,6 +213,7 @@ export const en = {
         idle: "Starting …",
         ok: "Reading",
         missing: "File not found",
+        unreadable: "No read permission",
         error: "Reading failed",
         passive: "Another instance is reading",
       },
@@ -221,6 +222,8 @@ export const en = {
       gaps: "Gaps",
       missingHelp:
         "Caddy does not write an access log here yet. Setup: README, section “Prepare Caddy”.",
+      unreadableHelp:
+        "The file is not readable for the manager (UID 1000), usually because Caddy created it before “mode 644” was in the Caddyfile. Run once:",
     },
   },
   config: {

@@ -34,7 +34,7 @@ export async function IngestionCard() {
         <dt className="text-muted-foreground">{g.status}</dt>
         <dd
           className={
-            state === "error" || state === "missing"
+            state === "error" || state === "missing" || state === "unreadable"
               ? "text-destructive"
               : undefined
           }
@@ -61,6 +61,14 @@ export async function IngestionCard() {
       </dl>
       {state === "missing" ? (
         <p className="text-sm text-muted-foreground">{g.missingHelp}</p>
+      ) : null}
+      {state === "unreadable" ? (
+        <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+          <p>{g.unreadableHelp}</p>
+          <code className="code-well block px-4 py-3 [overflow-wrap:anywhere] text-foreground select-all">
+            docker exec caddy chmod 644 {path}
+          </code>
+        </div>
       ) : null}
     </section>
   );

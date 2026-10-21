@@ -15,7 +15,7 @@ export const de: Messages = {
     dashboard: {
       label: "Dashboard",
       short: "Übersicht",
-      intro: "Deine Sites und die letzten 24 Stunden auf einen Blick.",
+      intro: "Die letzten 24 Stunden und deine Sites auf einen Blick.",
     },
     metrics: {
       label: "Metrics",
@@ -217,6 +217,7 @@ export const de: Messages = {
         idle: "Startet …",
         ok: "Liest ein",
         missing: "Datei nicht gefunden",
+        unreadable: "Keine Leseberechtigung",
         error: "Fehler beim Einlesen",
         passive: "Andere Instanz liest ein",
       },
@@ -225,6 +226,8 @@ export const de: Messages = {
       gaps: "Lücken",
       missingHelp:
         "Caddy schreibt noch kein Access Log an diese Stelle. Einrichtung: README, Abschnitt „Prepare Caddy“.",
+      unreadableHelp:
+        "Die Datei ist für den Manager (UID 1000) nicht lesbar, meist weil Caddy sie angelegt hat, bevor „mode 644“ in der Caddyfile stand. Einmal ausführen:",
     },
   },
   config: {

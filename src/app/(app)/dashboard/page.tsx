@@ -32,7 +32,40 @@ export default async function DashboardPage() {
   const d = t.dashboard;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-10">
+      <section
+        aria-labelledby="traffic-heading"
+        className="flex flex-col gap-3"
+      >
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <h2 id="traffic-heading" className="heading text-2xl">
+            {d.last24h}
+          </h2>
+          <Link
+            href="/metrics"
+            className="inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground hover:text-foreground md:min-h-8"
+          >
+            {d.allMetrics}
+            <ChevronRight aria-hidden className="size-4" />
+          </Link>
+        </div>
+        {traffic.hosts.length === 0 ? (
+          <EmptyState
+            icon={LayoutDashboard}
+            title={d.noTrafficTitle}
+            description={d.noTrafficText}
+          />
+        ) : (
+          <>
+            <StatTiles totals={traffic.metrics.totals} />
+            <RequestsChart
+              title={d.requestsPerHour}
+              buckets={chartBuckets(traffic.metrics, locale, t)}
+            />
+          </>
+        )}
+      </section>
+
       <section
         aria-labelledby="running-heading"
         className="flex flex-col gap-4"
@@ -70,39 +103,6 @@ export default async function DashboardPage() {
                 : t.common.notConfigured}
             </AlertDescription>
           </Alert>
-        )}
-      </section>
-
-      <section
-        aria-labelledby="traffic-heading"
-        className="flex flex-col gap-3"
-      >
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <h2 id="traffic-heading" className="heading text-2xl">
-            {d.last24h}
-          </h2>
-          <Link
-            href="/metrics"
-            className="inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground hover:text-foreground md:min-h-8"
-          >
-            {d.allMetrics}
-            <ChevronRight aria-hidden className="size-4" />
-          </Link>
-        </div>
-        {traffic.hosts.length === 0 ? (
-          <EmptyState
-            icon={LayoutDashboard}
-            title={d.noTrafficTitle}
-            description={d.noTrafficText}
-          />
-        ) : (
-          <>
-            <StatTiles totals={traffic.metrics.totals} />
-            <RequestsChart
-              title={d.requestsPerHour}
-              buckets={chartBuckets(traffic.metrics, locale, t)}
-            />
-          </>
         )}
       </section>
     </div>
