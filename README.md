@@ -22,6 +22,17 @@
   </tr>
 </table>
 
+Changelog v1.2.0
+- Form sites can be redirects: any http(s) target, placeholders such as
+{uri} allowed, with 301, 302, 307 or 308 (Caddy's redir). Basic auth stays
+reserved for reverse proxies, since Caddy redirects before it would ask.
+- Caddy Config lists the sites of your Caddyfile with their access log state
+and adds import access_log to the selected ones, or to all at once. Caddy
+checks the change first; it is a revision like any other and can be rolled
+back.
+- The Caddyfile editor and the sites.caddy preview have syntax highlighting.
+- Form sites can also support basic auth
+
 ## Requirements
 
 Linux on amd64, Docker Engine 26+ with Compose 2.26+, and Caddy 2.8+ in Docker with a named
