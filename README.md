@@ -61,6 +61,14 @@ import /config/manager/sites.caddy
 ```
 
 ```sh
+Add the following to your reverse Proxy entries within Caddyfile if you want them to output logs - example:
+example {
+  import access_log
+  reverse_proxy_app:8080
+}
+```
+
+```sh
 sudo setfacl -m u:1000:rw /path/to/Caddyfile && docker restart caddy
 ```
 
