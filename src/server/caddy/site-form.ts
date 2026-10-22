@@ -7,6 +7,10 @@ export interface SiteFormValues {
   upstream: string;
   tls: TlsMode | string;
   enabled: boolean;
+  basicAuth: boolean;
+  basicAuthUsername: string;
+  /** Only ever travels browser → server; echoed back empty. */
+  basicAuthPassword: string;
 }
 
 export interface SiteFormState {
@@ -35,6 +39,9 @@ export const emptySiteFormValues: SiteFormValues = {
   upstream: "",
   tls: "automatic",
   enabled: true,
+  basicAuth: false,
+  basicAuthUsername: "",
+  basicAuthPassword: "",
 };
 
 /** Generous bound for echoing input back; the domain validation is stricter. */
@@ -56,5 +63,13 @@ export function siteFormValues(formData: FormData): SiteFormValues {
     upstream: text(formData, "upstream"),
     tls: text(formData, "tls"),
     enabled: formData.get("enabled") === "on",
+    basicAuth: formData.get("basicAuth") === "on",
+    basicAuthUsername: text(formData, "basicAuthUsername"),
+    basicAuthPassword: text(formData, "basicAuthPassword"),
   };
+}
+
+/** Values sent back with a form error: never the password. */
+export function echoedValues(values: SiteFormValues): SiteFormValues {
+  return { ...values, basicAuthPassword: "" };
 }

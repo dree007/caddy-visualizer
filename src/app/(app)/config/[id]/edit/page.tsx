@@ -31,7 +31,11 @@ export default async function EditSitePage({
         upstream: site.upstream,
         tls: site.tls,
         enabled: site.enabled,
+        basicAuth: site.basicAuthHash !== null,
+        basicAuthUsername: site.basicAuthUsername ?? "",
+        basicAuthPassword: "",
       }}
+      storedPassword={site.basicAuthHash !== null}
       siteId={site.id}
       version={site.updatedAt.getTime()}
       title={t.config.editor.editTitle}

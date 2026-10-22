@@ -43,11 +43,16 @@ export class CaddyfileError extends Error {
  * upstream URLs: no whitespace, quotes, braces, `#`, `$`, `\`, `*`, `@`.
  */
 const SAFE_TOKEN = /^[A-Za-z0-9][A-Za-z0-9._:/[\]-]*$/;
+/**
+ * A bcrypt hash (`$2b$12$…`, only `$./` besides letters and digits). A bare
+ * `$` has no meaning to the lexer: environment variables need `{$NAME}`.
+ */
+const BCRYPT_TOKEN = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
 /** Printable ASCII, no line breaks; `{` and `}` are excluded as well. */
 const SAFE_COMMENT = /^[\x20-\x7a|~]*$/;
 
 export function isCaddyToken(value: string): value is CaddyToken {
-  return SAFE_TOKEN.test(value);
+  return SAFE_TOKEN.test(value) || BCRYPT_TOKEN.test(value);
 }
 
 export function caddyToken(value: string): CaddyToken {

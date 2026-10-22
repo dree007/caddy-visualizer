@@ -1,6 +1,6 @@
 {
   "name": "caddy-visualizer",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -12,6 +12,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "bcryptjs": "3.0.3",
     "better-sqlite3": "13.0.3",
     "class-variance-authority": "0.7.1",
     "cn": "0.4.0",

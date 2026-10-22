@@ -1,6 +1,13 @@
 "use client";
 
-import { ArrowLeft, CircleAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  CircleAlert,
+  Eye,
+  EyeOff,
+  KeyRound,
+  ShieldCheck,
+} from "lucide-react";
 import Link from "next/link";
 import {
   type FormEvent,
@@ -16,6 +23,11 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
+import {
+  BASIC_AUTH_PASSWORD_MIN_LENGTH,
+  BASIC_AUTH_USERNAME_MAX_LENGTH,
+  generateBasicAuthPassword,
+} from "@/modules/caddy/basic-auth";
 import {
   type SiteField,
   type SiteFieldErrors,
@@ -38,7 +50,15 @@ type SiteFormAction = (
 /** Field errors found in the browser; `null` = checked and valid (hides a server error). */
 type ClientErrors = Partial<Record<SiteField, string | null>>;
 
-const FIELD_ORDER: SiteField[] = ["hostname", "upstream", "tls", "enabled"];
+const FIELD_ORDER: SiteField[] = [
+  "hostname",
+  "upstream",
+  "tls",
+  "enabled",
+  "basicAuth",
+  "basicAuthUsername",
+  "basicAuthPassword",
+];
 
 /**
  * Create/edit form. Validation in the browser uses the same domain contract as
@@ -48,6 +68,7 @@ const FIELD_ORDER: SiteField[] = ["hostname", "upstream", "tls", "enabled"];
 export function SiteEditor({
   action,
   initialValues,
+  storedPassword = false,
   siteId,
   version,
   title,
@@ -55,6 +76,8 @@ export function SiteEditor({
 }: {
   action: SiteFormAction;
   initialValues: SiteFormValues;
+  /** The site has a basic auth hash: an empty password keeps it. */
+  storedPassword?: boolean;
   /** Set when editing an existing site. */
   siteId?: string;
   /** `updatedAt` (epoch ms) of the edited version, for conflict detection. */
@@ -72,6 +95,9 @@ export function SiteEditor({
     errors: ClientErrors;
   }>({ attempt: 0, errors: {} });
   const clientErrors = client.attempt === state.attempt ? client.errors : {};
+  const [tlsChoice, setTlsChoice] = useState({ attempt: 0, tls: "" });
+  const tls =
+    tlsChoice.attempt === state.attempt ? tlsChoice.tls : state.values.tls;
   const { t } = useI18n();
   const e = t.config.editor;
 
@@ -84,7 +110,9 @@ export function SiteEditor({
     error === undefined ? undefined : translateCode(t, error);
 
   function check(form: HTMLFormElement): SiteFieldErrors {
-    const result = validateSiteInput(siteFormValues(new FormData(form)));
+    const result = validateSiteInput(siteFormValues(new FormData(form)), {
+      storedPassword,
+    });
     return result.ok ? {} : result.fieldErrors;
   }
 
@@ -104,6 +132,7 @@ export function SiteEditor({
 
   /** On blur: only once something was entered, so tabbing through stays quiet. */
   function onBlur(field: SiteField, input: HTMLInputElement) {
+    if (!input.form) return;
     if (input.value.trim() !== "" || errorFor(field)) {
       revalidate(field, input.form!);
     }
@@ -235,7 +264,11 @@ export function SiteEditor({
               aria-labelledby="tls-label"
               aria-invalid={tlsError ? true : undefined}
               aria-describedby={tlsError ? "tls-error" : undefined}
-              onValueChange={() => setClientError("tls", null)}
+              onValueChange={(value) => {
+                setTlsChoice({ attempt: state.attempt, tls: value });
+                setClientError("tls", null);
+                if (errorFor("basicAuth")) setClientError("basicAuth", null);
+              }}
               className="grid gap-2 sm:grid-cols-2"
             >
               {TLS_MODES.map((mode) => (
@@ -283,6 +316,19 @@ export function SiteEditor({
             </div>
             <FieldError id="enabled-error" error={shown(enabledError)} />
           </div>
+
+          <BasicAuthFields
+            values={values}
+            storedPassword={storedPassword}
+            httpsOnly={tls !== "off"}
+            errors={{
+              basicAuth: shown(errorFor("basicAuth")),
+              basicAuthUsername: shown(errorFor("basicAuthUsername")),
+              basicAuthPassword: shown(errorFor("basicAuthPassword")),
+            }}
+            onBlur={onBlur}
+            onChange={onChange}
+          />
         </fieldset>
 
         <div className="flex flex-col-reverse gap-2 border-t pt-5 sm:flex-row sm:justify-end">
@@ -300,6 +346,177 @@ export function SiteEditor({
           </Button>
         </div>
       </form>
+    </div>
+  );
+}
+
+/**
+ * Optional basic auth: user name and password, never the stored hash. With a
+ * stored password the field stays empty and keeps it unless a new one is typed.
+ * Only offered with HTTPS (the credentials are sent with every request).
+ */
+function BasicAuthFields({
+  values,
+  storedPassword,
+  httpsOnly,
+  errors,
+  onBlur,
+  onChange,
+}: {
+  values: SiteFormValues;
+  storedPassword: boolean;
+  httpsOnly: boolean;
+  errors: Partial<Record<SiteField, string>>;
+  onBlur: (field: SiteField, input: HTMLInputElement) => void;
+  onChange: (field: SiteField, input: HTMLInputElement) => void;
+}) {
+  const { t } = useI18n();
+  const e = t.config.editor;
+  const [enabled, setEnabled] = useState(values.basicAuth);
+  const [password, setPassword] = useState("");
+  const [visible, setVisible] = useState(false);
+  const [generated, setGenerated] = useState(false);
+  const keeps = storedPassword && values.basicAuth;
+  const usernameError = errors.basicAuthUsername;
+  const passwordError = errors.basicAuthPassword;
+
+  return (
+    <div className="flex flex-col gap-4 rounded-2xl bg-band p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="basicAuth">{e.basicAuth}</Label>
+          <p id="basicAuth-hint" className="text-xs text-muted-foreground">
+            {e.basicAuthHint}
+          </p>
+        </div>
+        <Switch
+          id="basicAuth"
+          name="basicAuth"
+          data-field="basicAuth"
+          checked={enabled}
+          onCheckedChange={setEnabled}
+          disabled={!httpsOnly && !enabled}
+          aria-invalid={errors.basicAuth ? true : undefined}
+          aria-describedby={
+            errors.basicAuth
+              ? "basicAuth-hint basicAuth-error"
+              : "basicAuth-hint"
+          }
+          className="mt-0.5"
+        />
+      </div>
+      <FieldError id="basicAuth-error" error={errors.basicAuth} />
+
+      {enabled ? (
+        <>
+          {keeps ? (
+            <p className="flex items-start gap-1.5 text-sm">
+              <ShieldCheck
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+              />
+              {e.basicAuthActive}
+            </p>
+          ) : null}
+          <Field
+            id="basicAuthUsername"
+            label={e.username}
+            hint={e.usernameHint}
+            error={usernameError}
+          >
+            <Input
+              id="basicAuthUsername"
+              name="basicAuthUsername"
+              data-field="basicAuthUsername"
+              defaultValue={values.basicAuthUsername}
+              autoCapitalize="none"
+              autoCorrect="off"
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={BASIC_AUTH_USERNAME_MAX_LENGTH}
+              aria-invalid={usernameError ? true : undefined}
+              aria-describedby={describedBy("basicAuthUsername", usernameError)}
+              onBlur={(event) =>
+                onBlur("basicAuthUsername", event.currentTarget)
+              }
+              onChange={(event) =>
+                onChange("basicAuthUsername", event.currentTarget)
+              }
+              className="h-11 md:h-9"
+            />
+          </Field>
+          <Field
+            id="basicAuthPassword"
+            label={keeps ? e.newPassword : e.password}
+            hint={
+              keeps
+                ? e.keepPasswordHint(BASIC_AUTH_PASSWORD_MIN_LENGTH)
+                : e.passwordHint(BASIC_AUTH_PASSWORD_MIN_LENGTH)
+            }
+            error={passwordError}
+          >
+            <div className="flex gap-2">
+              <Input
+                id="basicAuthPassword"
+                name="basicAuthPassword"
+                data-field="basicAuthPassword"
+                type={visible ? "text" : "password"}
+                value={password}
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoComplete="new-password"
+                spellCheck={false}
+                maxLength={256}
+                aria-invalid={passwordError ? true : undefined}
+                aria-describedby={describedBy(
+                  "basicAuthPassword",
+                  passwordError,
+                )}
+                onBlur={(event) =>
+                  onBlur("basicAuthPassword", event.currentTarget)
+                }
+                onChange={(event) => {
+                  setPassword(event.currentTarget.value);
+                  setGenerated(false);
+                  onChange("basicAuthPassword", event.currentTarget);
+                }}
+                className="h-11 min-w-0 flex-1 font-mono md:h-9"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label={visible ? e.hidePassword : e.showPassword}
+                title={visible ? e.hidePassword : e.showPassword}
+                aria-pressed={visible}
+                aria-controls="basicAuthPassword"
+                onClick={() => setVisible((shown) => !shown)}
+                className="max-md:size-11"
+              >
+                {visible ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setPassword(generateBasicAuthPassword());
+                  setVisible(true);
+                  setGenerated(true);
+                }}
+                className="h-11 md:h-9"
+              >
+                <KeyRound aria-hidden data-icon="inline-start" />
+                {e.generatePassword}
+              </Button>
+            </div>
+          </Field>
+          {generated ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              {e.generatedNotice}
+            </p>
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 }

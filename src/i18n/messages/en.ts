@@ -328,7 +328,7 @@ export const en = {
     },
     preview: {
       heading: "Generated configuration",
-      text: "sites.caddy, generated from the stored enabled form sites. Read-only; it is sent to Caddy when applying.",
+      text: "sites.caddy, generated from the stored enabled form sites. Read-only; it is sent to Caddy when applying. Password hashes are hidden.",
       ariaContent: "Content of sites.caddy",
       activeSites: (n: number) => plural(n, "enabled site", "enabled sites"),
       currentStatus: "Current status",
@@ -342,6 +342,7 @@ export const en = {
       hostname: "Hostname",
       upstream: "Upstream",
       tls: "TLS",
+      basicAuth: "Basic auth",
       changed: "Changed",
       status: "Status",
       active: "Enabled",
@@ -383,6 +384,23 @@ export const en = {
       enabled: "Enabled",
       enabledHint:
         "Disabled sites stay stored but are left out of the generated configuration.",
+      basicAuth: "Enable basic auth",
+      basicAuthHint:
+        "Caddy asks for a user name and password before forwarding any request. Requires HTTPS.",
+      basicAuthActive:
+        "Basic auth is active. The password is stored as a hash only.",
+      username: "User name",
+      usernameHint: "Letters, digits, dot, hyphen and underscore.",
+      password: "Password",
+      newPassword: "New password",
+      passwordHint: (min: number) => `At least ${min} characters.`,
+      keepPasswordHint: (min: number) =>
+        `Leave empty to keep the current password. A new one needs at least ${min} characters.`,
+      showPassword: "Show password",
+      hidePassword: "Hide password",
+      generatePassword: "Generate",
+      generatedNotice:
+        "Password generated. Note it down now: it cannot be shown again after saving.",
     },
     notFound: {
       title: "Site not found",
@@ -463,6 +481,20 @@ export const en = {
       "Please enter a valid upstream host (hostname, IPv4 or IPv6 address).",
     "upstream.port": "The port must be a number between 1 and 65535.",
     "site.duplicate": "A site with this hostname already exists.",
+    "basicAuth.usernameRequired": "Please enter a user name.",
+    "basicAuth.usernameTooLong": ({ max }: P) =>
+      `The user name may have at most ${max} characters.`,
+    "basicAuth.usernameChars":
+      "The user name may only contain letters, digits, dot, hyphen and underscore, starting with a letter or digit.",
+    "basicAuth.passwordRequired": "Please enter a password.",
+    "basicAuth.passwordTooShort": ({ min }: P) =>
+      `The password needs at least ${min} characters.`,
+    "basicAuth.passwordTooLong": ({ max }: P) =>
+      `The password may be at most ${max} bytes long (fewer characters with umlauts or emoji).`,
+    "basicAuth.passwordChars":
+      "The password must not contain control characters.",
+    "basicAuth.requiresHttps":
+      "Basic auth needs HTTPS: without it, user name and password travel unencrypted. Choose “Automatic (HTTPS)”.",
     "rollback.invalidSnapshot":
       "The stored state of this revision is invalid and cannot be restored.",
     "overview.previewFailed":

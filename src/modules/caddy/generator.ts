@@ -8,9 +8,9 @@ import {
   renderCaddyfile,
 } from "./caddyfile";
 import {
-  type SiteInput,
-  validateSiteInput,
-  type ValidSiteInput,
+  type SiteConfig,
+  type SiteConfigInput,
+  validateSiteConfig,
 } from "./contracts";
 
 /** Fixed header, so a manual edit of the generated file is recognizable as such. */
@@ -32,10 +32,7 @@ export class SiteGeneratorError extends Error {
 }
 
 /** The site data the generator needs; matches the stored site model. */
-export type GeneratorSite = Pick<
-  SiteInput,
-  "hostname" | "upstream" | "tls" | "enabled"
->;
+export type GeneratorSite = SiteConfigInput;
 
 /**
  * Pure and deterministic: the same sites always produce byte-identical output,
@@ -74,7 +71,7 @@ export function buildSitesDocument(
 }
 
 function documentFor(
-  sites: readonly ValidSiteInput[],
+  sites: readonly SiteConfig[],
   options: GeneratorOptions,
 ): CaddyfileDocument {
   return {
@@ -83,7 +80,7 @@ function documentFor(
   };
 }
 
-function enabledSorted(sites: readonly GeneratorSite[]): ValidSiteInput[] {
+function enabledSorted(sites: readonly GeneratorSite[]): SiteConfig[] {
   const valid = sites.filter((site) => site.enabled).map(validated);
 
   const seen = new Set<string>();
@@ -99,19 +96,19 @@ function enabledSorted(sites: readonly GeneratorSite[]): ValidSiteInput[] {
   );
 }
 
-function validated(site: GeneratorSite): ValidSiteInput {
-  const result = validateSiteInput(site);
+function validated(site: GeneratorSite): SiteConfig {
+  const result = validateSiteConfig(site);
   if (!result.ok) {
-    // Field names only: the values are untrusted and may be arbitrarily long.
+    // Field names only: the values are untrusted, long or secret (hashes).
     throw new SiteGeneratorError(
-      `Invalid site data in fields: ${Object.keys(result.fieldErrors).join(", ")}`,
+      `Invalid site data in fields: ${result.fields.join(", ")}`,
     );
   }
   return result.value;
 }
 
 function siteBlock(
-  site: ValidSiteInput,
+  site: SiteConfig,
   { accessLog = false }: GeneratorOptions,
 ): CaddySiteBlock {
   return {
@@ -120,19 +117,41 @@ function siteBlock(
       ...(accessLog
         ? [{ name: caddyToken("import"), args: [caddyToken("access_log")] }]
         : []),
+      ...basicAuth(site),
       reverseProxy(site),
     ],
   };
 }
 
 /** `tls: off` uses an `http://` address: Caddy then serves plain HTTP only. */
-function siteAddress(site: ValidSiteInput) {
+function siteAddress(site: SiteConfig) {
   return caddyToken(
     site.tls === "off" ? `http://${site.hostname}` : site.hostname,
   );
 }
 
-function reverseProxy(site: ValidSiteInput): CaddyDirective {
+/**
+ * `basic_auth` (Caddy ≥ 2.8; 2.7 only knows `basicauth`) with bcrypt, Caddy's
+ * default algorithm. Caddy orders it before `reverse_proxy` and after its
+ * HTTP→HTTPS redirect, so credentials are only ever sent over HTTPS.
+ */
+function basicAuth(site: SiteConfig): CaddyDirective[] {
+  if (site.basicAuthUsername === null || site.basicAuthHash === null) return [];
+  return [
+    {
+      name: caddyToken("basic_auth"),
+      args: [],
+      block: [
+        {
+          name: caddyToken(site.basicAuthUsername),
+          args: [caddyToken(site.basicAuthHash)],
+        },
+      ],
+    },
+  ];
+}
+
+function reverseProxy(site: SiteConfig): CaddyDirective {
   return {
     name: caddyToken("reverse_proxy"),
     args: [caddyToken(site.upstream)],

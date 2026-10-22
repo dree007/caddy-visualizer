@@ -8,9 +8,11 @@ import {
   type GeneratorOptions,
   SiteGeneratorError,
 } from "./generator";
+import { redactBcryptHashes } from "./basic-auth";
 import { listSites, type ManagedSite } from "./sites";
 
 export type SitesPreview =
+  /** `content` with password hashes hidden; `sha256` is that of the real file. */
   { ok: true; generated: GeneratedSitesCaddy } | { ok: false; message: string };
 
 export interface SitesOverview {
@@ -40,7 +42,14 @@ function previewOf(
   options: GeneratorOptions,
 ): SitesPreview {
   try {
-    return { ok: true, generated: generateSitesCaddy(sites, options) };
+    const generated = generateSitesCaddy(sites, options);
+    return {
+      ok: true,
+      generated: {
+        ...generated,
+        content: redactBcryptHashes(generated.content),
+      },
+    };
   } catch (error) {
     // Invalid rows (e.g. edited by hand) must not take down the whole page.
     if (error instanceof SiteGeneratorError) {

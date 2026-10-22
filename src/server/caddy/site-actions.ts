@@ -21,6 +21,7 @@ import { applyAfterChange } from "./apply";
 import {
   type ApplyOutcome,
   type SiteActionResult,
+  echoedValues,
   type SiteFormState,
   siteFormValues,
 } from "./site-form";
@@ -43,12 +44,13 @@ export async function createSiteAction(
 ): Promise<SiteFormState> {
   await requireSession();
   const { t } = await getI18n();
-  const values = siteFormValues(formData);
+  const input = siteFormValues(formData);
+  const values = echoedValues(input);
   const attempt = previous.attempt + 1;
 
   let result: SiteResult<ManagedSite>;
   try {
-    result = await createSite(getDb(), values);
+    result = await createSite(getDb(), input);
   } catch (error) {
     console.error("Creating a site failed", error);
     return { values, formError: t.actions.siteSaveFailed, attempt };
@@ -70,7 +72,8 @@ export async function updateSiteAction(
 ): Promise<SiteFormState> {
   await requireSession();
   const { t } = await getI18n();
-  const values = siteFormValues(formData);
+  const input = siteFormValues(formData);
+  const values = echoedValues(input);
   const attempt = previous.attempt + 1;
   const id = siteId.safeParse(formData.get("id"));
   if (!id.success) return { values, formError: t.actions.siteGone, attempt };
@@ -83,7 +86,7 @@ export async function updateSiteAction(
     result = await updateSite(
       getDb(),
       id.data,
-      values,
+      input,
       new Date(),
       new Date(version.data),
     );

@@ -69,6 +69,7 @@ export default async function ConfigPage({
     hostname: site.hostname,
     upstream: site.upstream,
     tls: site.tls,
+    basicAuth: site.basicAuthHash !== null,
     enabled: site.enabled,
     updatedAt: site.updatedAt.toISOString(),
     updatedLabel: formatDateTime(site.updatedAt, locale),

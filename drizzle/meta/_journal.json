@@ -50,6 +50,13 @@
       "when": 1792408250020,
       "tag": "0006_access_log",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1792658534322,
+      "tag": "0007_site_basic_auth",
+      "breakpoints": true
     }
   ]
 }

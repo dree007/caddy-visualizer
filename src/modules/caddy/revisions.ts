@@ -21,6 +21,9 @@ export interface SiteSnapshot {
   upstream: string;
   tls: string;
   enabled: boolean;
+  /** Missing in snapshots from before basic auth; restored by a rollback. */
+  basicAuthUsername?: string | null;
+  basicAuthHash?: string | null;
   /** Missing in snapshots written before rollbacks restored sites. */
   createdAt?: string;
   updatedAt: string;
@@ -33,6 +36,8 @@ export function snapshotOf(sites: readonly ManagedSite[]): SiteSnapshot[] {
     upstream: site.upstream,
     tls: site.tls,
     enabled: site.enabled,
+    basicAuthUsername: site.basicAuthUsername,
+    basicAuthHash: site.basicAuthHash,
     createdAt: site.createdAt.toISOString(),
     updatedAt: site.updatedAt.toISOString(),
   }));

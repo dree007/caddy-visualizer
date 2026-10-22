@@ -4,7 +4,7 @@ import type { Db } from "@/server/db/client";
 
 import { code } from "@/i18n/codes";
 
-import { validateSiteInput } from "./contracts";
+import { validateSiteConfig } from "./contracts";
 import { type GeneratedSitesCaddy, generateSitesCaddy } from "./generator";
 import { definesAccessLogSnippet } from "./main-caddyfile";
 import { type ConfigRevision, insertRevision, snapshotOf } from "./revisions";
@@ -18,6 +18,8 @@ const snapshotSchema = z.array(
     upstream: z.string(),
     tls: z.string(),
     enabled: z.boolean(),
+    basicAuthUsername: z.string().nullable().optional(),
+    basicAuthHash: z.string().nullable().optional(),
     createdAt: z.iso.datetime().optional(),
     updatedAt: z.string(),
   }),
@@ -61,7 +63,7 @@ export function restoreRevisionSnapshot(
   const sites: Omit<ManagedSite, "createdAt">[] = [];
   const createdAtOf = new Map<string, Date>();
   for (const entry of parsed) {
-    const valid = validateSiteInput(entry);
+    const valid = validateSiteConfig(entry);
     if (!valid.ok || hostnames.has(valid.value.hostname)) {
       return { ok: false, message: INVALID_SNAPSHOT };
     }

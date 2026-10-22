@@ -60,14 +60,6 @@ Add to your Caddyfile, then allow UID 1000 to write it and restart Caddy:
 import /config/manager/sites.caddy
 ```
 
-Add 'import access_log' to your reverse Proxy entries within Caddyfile if you want them to output logs, just like this:
-```sh
-example {
-  import access_log
-  reverse_proxy_app:8080
-}
-```
-
 ```sh
 sudo setfacl -m u:1000:rw /path/to/Caddyfile && docker restart caddy
 ```

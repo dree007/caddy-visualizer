@@ -334,7 +334,7 @@ export const de: Messages = {
     },
     preview: {
       heading: "Generierte Konfiguration",
-      text: "sites.caddy, erzeugt aus den gespeicherten aktiven Formular-Sites. Nur zur Ansicht; an Caddy übertragen wird sie beim Anwenden.",
+      text: "sites.caddy, erzeugt aus den gespeicherten aktiven Formular-Sites. Nur zur Ansicht; an Caddy übertragen wird sie beim Anwenden. Passwort-Hashes sind ausgeblendet.",
       ariaContent: "Inhalt von sites.caddy",
       activeSites: (n) => plural(n, "aktive Site", "aktive Sites"),
       currentStatus: "Aktueller Status",
@@ -347,6 +347,7 @@ export const de: Messages = {
       hostname: "Hostname",
       upstream: "Upstream",
       tls: "TLS",
+      basicAuth: "Basic Auth",
       changed: "Geändert",
       status: "Status",
       active: "Aktiv",
@@ -387,6 +388,23 @@ export const de: Messages = {
       enabled: "Aktiviert",
       enabledHint:
         "Deaktivierte Sites bleiben gespeichert, erscheinen aber nicht in der generierten Konfiguration.",
+      basicAuth: "Basic Auth aktivieren",
+      basicAuthHint:
+        "Caddy fragt nach Benutzername und Passwort, bevor eine Anfrage weitergeleitet wird. Setzt HTTPS voraus.",
+      basicAuthActive:
+        "Basic Auth ist aktiv. Das Passwort ist nur als Hash gespeichert.",
+      username: "Benutzername",
+      usernameHint: "Buchstaben, Ziffern, Punkt, Bindestrich und Unterstrich.",
+      password: "Passwort",
+      newPassword: "Neues Passwort",
+      passwordHint: (min) => `Mindestens ${min} Zeichen.`,
+      keepPasswordHint: (min) =>
+        `Leer lassen, um das bisherige Passwort zu behalten. Ein neues braucht mindestens ${min} Zeichen.`,
+      showPassword: "Passwort anzeigen",
+      hidePassword: "Passwort verbergen",
+      generatePassword: "Generieren",
+      generatedNotice:
+        "Passwort generiert. Jetzt notieren: Nach dem Speichern lässt es sich nicht mehr anzeigen.",
     },
     notFound: {
       title: "Site nicht gefunden",
@@ -471,6 +489,20 @@ export const de: Messages = {
       "Bitte gib einen gültigen Upstream-Host an (Hostname, IPv4- oder IPv6-Adresse).",
     "upstream.port": "Der Port muss eine Zahl zwischen 1 und 65535 sein.",
     "site.duplicate": "Für diesen Hostnamen existiert bereits eine Site.",
+    "basicAuth.usernameRequired": "Bitte gib einen Benutzernamen ein.",
+    "basicAuth.usernameTooLong": ({ max }: P) =>
+      `Der Benutzername darf höchstens ${max} Zeichen haben.`,
+    "basicAuth.usernameChars":
+      "Der Benutzername darf nur Buchstaben, Ziffern, Punkt, Bindestrich und Unterstrich enthalten und muss mit einem Buchstaben oder einer Ziffer beginnen.",
+    "basicAuth.passwordRequired": "Bitte gib ein Passwort ein.",
+    "basicAuth.passwordTooShort": ({ min }: P) =>
+      `Das Passwort braucht mindestens ${min} Zeichen.`,
+    "basicAuth.passwordTooLong": ({ max }: P) =>
+      `Das Passwort darf höchstens ${max} Bytes lang sein (mit Umlauten oder Emoji weniger Zeichen).`,
+    "basicAuth.passwordChars":
+      "Das Passwort darf keine Steuerzeichen enthalten.",
+    "basicAuth.requiresHttps":
+      "Basic Auth braucht HTTPS: Ohne werden Benutzername und Passwort unverschlüsselt übertragen. Wähle „Automatisch (HTTPS)“.",
     "rollback.invalidSnapshot":
       "Der gespeicherte Stand dieser Revision ist ungültig und kann nicht wiederhergestellt werden.",
     "overview.previewFailed":

@@ -3,6 +3,7 @@
 import {
   ArrowRight,
   CircleAlert,
+  KeyRound,
   Lock,
   LockOpen,
   Pencil,
@@ -50,6 +51,8 @@ export interface SiteListItem {
   hostname: string;
   upstream: string;
   tls: TlsMode;
+  /** Protected by basic auth (never the credentials themselves). */
+  basicAuth: boolean;
   enabled: boolean;
   /** ISO timestamp, for `<time dateTime>`. */
   updatedAt: string;
@@ -142,11 +145,17 @@ function SiteRow({
         <span className="min-w-0 break-all">{site.upstream}</span>
       </p>
 
-      <div className="[grid-area:tls] lg:[grid-area:auto]">
+      <div className="flex flex-wrap gap-1.5 [grid-area:tls] lg:[grid-area:auto]">
         <Badge variant="outline" className="text-muted-foreground">
           <TlsIcon aria-hidden data-icon="inline-start" />
           {t.config.tls[site.tls].short}
         </Badge>
+        {site.basicAuth ? (
+          <Badge variant="outline" className="text-muted-foreground">
+            <KeyRound aria-hidden data-icon="inline-start" />
+            {l.basicAuth}
+          </Badge>
+        ) : null}
       </div>
 
       <p className="text-right text-xs text-muted-foreground [grid-area:updated] md:text-left lg:[grid-area:auto]">

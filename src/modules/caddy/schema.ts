@@ -24,12 +24,20 @@ export const caddySites = sqliteTable(
     upstream: text("upstream").notNull(),
     tls: text("tls", { enum: TLS_MODES }).notNull(),
     enabled: integer("enabled", { mode: "boolean" }).notNull(),
+    /** Basic auth is on iff both are set; the password itself is never stored. */
+    basicAuthUsername: text("basic_auth_username"),
+    /** bcrypt hash of the basic auth password; confidential like a password. */
+    basicAuthHash: text("basic_auth_hash"),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },
   (table) => [
     check("caddy_sites_tls_check", sql`${table.tls} in ('automatic', 'off')`),
     check("caddy_sites_enabled_check", sql`${table.enabled} in (0, 1)`),
+    check(
+      "caddy_sites_basic_auth_check",
+      sql`(${table.basicAuthUsername} is null) = (${table.basicAuthHash} is null) and (${table.basicAuthHash} is null or ${table.tls} = 'automatic')`,
+    ),
   ],
 );
 

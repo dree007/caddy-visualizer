@@ -6,6 +6,7 @@ import type { Db } from "@/server/db/client";
 
 import { code } from "@/i18n/codes";
 
+import { hashBasicAuthPassword } from "./basic-auth-hash";
 import {
   type SiteFieldErrors,
   validateSiteInput,
@@ -36,11 +37,33 @@ const CONFLICT: SiteError = { code: "conflict" };
 
 const fail = (error: SiteError) => ({ ok: false, error }) as const;
 
+type HashPassword = (password: string) => Promise<string>;
+
+/** The stored columns of validated input; hashes a new password, keeps the old hash otherwise. */
+async function storedValues(
+  { basicAuth, ...values }: ValidSiteInput,
+  existingHash: string | null,
+  hash: HashPassword,
+): Promise<Omit<ManagedSite, "id" | "createdAt" | "updatedAt">> {
+  if (!basicAuth) {
+    return { ...values, basicAuthUsername: null, basicAuthHash: null };
+  }
+  return {
+    ...values,
+    basicAuthUsername: basicAuth.username,
+    basicAuthHash:
+      basicAuth.password === null
+        ? existingHash
+        : await hash(basicAuth.password),
+  };
+}
+
 /** Creates a site from untrusted input (validated and normalized here). */
 export async function createSite(
   db: Db,
   input: unknown,
   now: Date = new Date(),
+  hash: HashPassword = hashBasicAuthPassword,
 ): Promise<SiteResult<ManagedSite>> {
   const validation = validateSiteInput(input);
   if (!validation.ok) {
@@ -52,7 +75,7 @@ export async function createSite(
 
   const site: ManagedSite = {
     id: randomUUID(),
-    ...validation.value,
+    ...(await storedValues(validation.value, null, hash)),
     createdAt: now,
     updatedAt: now,
   };
@@ -91,7 +114,8 @@ export async function listEnabledSites(db: Db): Promise<ManagedSite[]> {
 /**
  * Replaces all editable fields of a site with validated input. With
  * `expectedUpdatedAt` (the version the editor was opened with) the update only
- * happens if nobody changed the site in between; otherwise `conflict`.
+ * happens if nobody changed the site in between; otherwise `conflict`. An
+ * empty basic auth password keeps the stored hash.
  */
 export async function updateSite(
   db: Db,
@@ -99,12 +123,15 @@ export async function updateSite(
   input: unknown,
   now: Date = new Date(),
   expectedUpdatedAt?: Date,
+  hash: HashPassword = hashBasicAuthPassword,
 ): Promise<SiteResult<ManagedSite>> {
-  const validation = validateSiteInput(input);
+  const existing = await getSite(db, id);
+  const validation = validateSiteInput(input, {
+    storedPassword: Boolean(existing?.basicAuthHash),
+  });
   if (!validation.ok) {
     return fail({ code: "validation", fieldErrors: validation.fieldErrors });
   }
-  const existing = await getSite(db, id);
   if (!existing) return fail(NOT_FOUND);
   if (
     expectedUpdatedAt &&
@@ -115,7 +142,12 @@ export async function updateSite(
   if (await hostnameTaken(db, validation.value.hostname, id)) {
     return fail(HOSTNAME_TAKEN);
   }
-  return applyUpdate(db, existing, validation.value, now, expectedUpdatedAt);
+  const values = await storedValues(
+    validation.value,
+    existing.basicAuthHash,
+    hash,
+  );
+  return applyUpdate(db, existing, values, now, expectedUpdatedAt);
 }
 
 /** Enables or disables a site without touching its other fields. */
@@ -159,7 +191,7 @@ export async function generateSitesCaddyFromDb(
 async function applyUpdate(
   db: Db,
   existing: ManagedSite,
-  values: ValidSiteInput,
+  values: Omit<ManagedSite, "id" | "createdAt" | "updatedAt">,
   now: Date,
   expectedUpdatedAt?: Date,
 ): Promise<SiteResult<ManagedSite>> {
