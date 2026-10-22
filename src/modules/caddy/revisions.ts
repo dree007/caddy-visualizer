@@ -18,7 +18,11 @@ export type ConfigRevision = ConfigRevisionRow;
 export interface SiteSnapshot {
   id: string;
   hostname: string;
-  upstream: string;
+  /** Missing in snapshots from before redirects (= proxy). */
+  kind?: string;
+  upstream: string | null;
+  redirectTarget?: string | null;
+  redirectCode?: number | null;
   tls: string;
   enabled: boolean;
   /** Missing in snapshots from before basic auth; restored by a rollback. */
@@ -33,7 +37,10 @@ export function snapshotOf(sites: readonly ManagedSite[]): SiteSnapshot[] {
   return sites.map((site) => ({
     id: site.id,
     hostname: site.hostname,
+    kind: site.kind,
     upstream: site.upstream,
+    redirectTarget: site.redirectTarget,
+    redirectCode: site.redirectCode,
     tls: site.tls,
     enabled: site.enabled,
     basicAuthUsername: site.basicAuthUsername,

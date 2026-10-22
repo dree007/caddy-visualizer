@@ -28,7 +28,10 @@ export default async function EditSitePage({
       action={updateSiteAction}
       initialValues={{
         hostname: site.hostname,
-        upstream: site.upstream,
+        kind: site.kind,
+        upstream: site.upstream ?? "",
+        redirectTarget: site.redirectTarget ?? "",
+        redirectCode: String(site.redirectCode ?? 308),
         tls: site.tls,
         enabled: site.enabled,
         basicAuth: site.basicAuthHash !== null,

@@ -1,5 +1,6 @@
 import { CircleAlert, FileCode } from "lucide-react";
 
+import { CaddyfileCode } from "@/components/caddyfile-code";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { type Locale, type Messages, translateCode } from "@/i18n";
 import { formatDateTime } from "@/lib/format";
@@ -9,8 +10,8 @@ import type { SyncStatus } from "@/modules/caddy/sync-status";
 import { SYNC_TONES, TONE_CLASSES } from "./sync-labels";
 
 /**
- * Read-only view of `sites.caddy` exactly as the generator produces it. The UI
- * only splits the text into lines (to dim comments); it never renders config.
+ * Read-only view of `sites.caddy` exactly as the generator produces it, with
+ * syntax highlighting (only colors; the text itself is never changed).
  */
 export function ConfigPreview({
   preview,
@@ -53,19 +54,7 @@ export function ConfigPreview({
             className="code-well overflow-x-auto p-4 [tab-size:4] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none md:p-4 md:text-[0.8125rem]"
           >
             <code>
-              {lines(preview.generated.content).map((line, index) => (
-                <span
-                  key={index}
-                  className={
-                    line.trimStart().startsWith("#")
-                      ? "text-muted-foreground"
-                      : undefined
-                  }
-                >
-                  {line}
-                  {"\n"}
-                </span>
-              ))}
+              <CaddyfileCode text={preview.generated.content} />
             </code>
           </pre>
           <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -118,9 +107,4 @@ export function ConfigPreview({
       )}
     </section>
   );
-}
-
-/** The content ends with a newline; that must not become an extra empty line. */
-function lines(content: string): string[] {
-  return content.replace(/\n$/, "").split("\n");
 }

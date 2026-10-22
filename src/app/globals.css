@@ -123,6 +123,14 @@
   --viz-critical: #d03b3b;
   --viz-neutral: #898781;
   --viz-grid: #e0d6c7;
+  /* Caddyfile syntax highlighting. */
+  --syntax-address: #3a36ff;
+  --syntax-directive: #0b6a80;
+  --syntax-string: #2f7a3b;
+  --syntax-placeholder: #c2410c;
+  --syntax-matcher: #a1347c;
+  --syntax-snippet: #8a5a00;
+  --syntax-muted: #8a7b6b;
   --radius: 1rem;
   --sidebar: #ede6da;
   --sidebar-foreground: #1b1712;
@@ -184,6 +192,13 @@
   --chart-5: #f1ebe1;
   --viz-series: #7f7bff;
   --viz-grid: #423a32;
+  --syntax-address: #9b98ff;
+  --syntax-directive: #7ccbe0;
+  --syntax-string: #8fd19e;
+  --syntax-placeholder: #ff9a6b;
+  --syntax-matcher: #e58ac6;
+  --syntax-snippet: #e8b75c;
+  --syntax-muted: #9a8c7c;
   --sidebar: #2c2722;
   --sidebar-foreground: #f1ebe1;
   --sidebar-primary: #f1ebe1;
@@ -225,6 +240,32 @@
   /* Native select/textarea in the input style: a soft recess. */
   .field {
     @apply rounded-md border border-line-control/60 bg-card shadow-pressed transition-[border-color,box-shadow] duration-200 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/35;
+  }
+  /* Caddyfile syntax colors (see lib/caddyfile-highlight.ts); color only, so
+     the editor overlay keeps the textarea's glyph widths. */
+  .syntax-address {
+    @apply text-(--syntax-address);
+  }
+  .syntax-directive {
+    @apply text-(--syntax-directive);
+  }
+  .syntax-string {
+    @apply text-(--syntax-string);
+  }
+  .syntax-placeholder {
+    @apply text-(--syntax-placeholder);
+  }
+  .syntax-matcher {
+    @apply text-(--syntax-matcher);
+  }
+  .syntax-snippet {
+    @apply text-(--syntax-snippet);
+  }
+  .syntax-comment {
+    @apply text-(--syntax-muted);
+  }
+  .syntax-brace {
+    @apply text-(--syntax-muted);
   }
   /* Read-only code and config blocks. */
   .code-well {

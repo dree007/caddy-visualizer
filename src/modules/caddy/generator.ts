@@ -118,7 +118,7 @@ function siteBlock(
         ? [{ name: caddyToken("import"), args: [caddyToken("access_log")] }]
         : []),
       ...basicAuth(site),
-      reverseProxy(site),
+      site.kind === "redirect" ? redirect(site) : reverseProxy(site),
     ],
   };
 }
@@ -154,6 +154,17 @@ function basicAuth(site: SiteConfig): CaddyDirective[] {
 function reverseProxy(site: SiteConfig): CaddyDirective {
   return {
     name: caddyToken("reverse_proxy"),
-    args: [caddyToken(site.upstream)],
+    args: [caddyToken(site.upstream ?? "")],
+  };
+}
+
+/** `redir <to> <code>`; with an explicit code the target is never read as a matcher. */
+function redirect(site: SiteConfig): CaddyDirective {
+  return {
+    name: caddyToken("redir"),
+    args: [
+      caddyToken(site.redirectTarget ?? ""),
+      caddyToken(String(site.redirectCode)),
+    ],
   };
 }

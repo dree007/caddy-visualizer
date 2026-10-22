@@ -51,8 +51,33 @@ const BCRYPT_TOKEN = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
 /** Printable ASCII, no line breaks; `{` and `}` are excluded as well. */
 const SAFE_COMMENT = /^[\x20-\x7a|~]*$/;
 
+/** Placeholders allowed in a URL token, e.g. `https://new.example.com{uri}`. */
+export const URL_PLACEHOLDERS = [
+  "uri",
+  "path",
+  "query",
+  "host",
+  "hostport",
+  "scheme",
+] as const;
+const URL_CHARS = "A-Za-z0-9\\-._~:/?\\[\\]@!$&'()*+,;=%";
+/**
+ * An absolute http(s) URL of URL characters and known placeholders only: no
+ * whitespace, quotes, `#`, `\` or other braces. A `{` is only ever followed by
+ * a placeholder name, so `{$ENV}` substitution cannot happen.
+ */
+const URL_TOKEN = new RegExp(
+  `^https?://[${URL_CHARS}]*(?:\\{(?:${URL_PLACEHOLDERS.join("|")})\\}[${URL_CHARS}]*)*$`,
+);
+
+export function isUrlToken(value: string): boolean {
+  return URL_TOKEN.test(value);
+}
+
 export function isCaddyToken(value: string): value is CaddyToken {
-  return SAFE_TOKEN.test(value) || BCRYPT_TOKEN.test(value);
+  return (
+    SAFE_TOKEN.test(value) || BCRYPT_TOKEN.test(value) || URL_TOKEN.test(value)
+  );
 }
 
 export function caddyToken(value: string): CaddyToken {

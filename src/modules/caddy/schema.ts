@@ -7,6 +7,7 @@ import {
   text,
 } from "drizzle-orm/sqlite-core";
 
+import { SITE_KINDS } from "./redirect";
 import { TLS_MODES } from "./tls";
 
 /**
@@ -20,8 +21,13 @@ export const caddySites = sqliteTable(
     id: text("id").primaryKey(),
     /** Lower-case DNS name, unique across all managed sites. */
     hostname: text("hostname").notNull().unique(),
-    /** Canonical reverse-proxy upstream `http(s)://host[:port]`. */
-    upstream: text("upstream").notNull(),
+    kind: text("kind", { enum: SITE_KINDS }).notNull().default("proxy"),
+    /** Canonical reverse-proxy upstream `http(s)://host[:port]`; proxies only. */
+    upstream: text("upstream"),
+    /** Target URL of a redirect site (may contain placeholders such as `{uri}`). */
+    redirectTarget: text("redirect_target"),
+    /** 301, 302, 307 or 308. */
+    redirectCode: integer("redirect_code"),
     tls: text("tls", { enum: TLS_MODES }).notNull(),
     enabled: integer("enabled", { mode: "boolean" }).notNull(),
     /** Basic auth is on iff both are set; the password itself is never stored. */
@@ -34,6 +40,10 @@ export const caddySites = sqliteTable(
   (table) => [
     check("caddy_sites_tls_check", sql`${table.tls} in ('automatic', 'off')`),
     check("caddy_sites_enabled_check", sql`${table.enabled} in (0, 1)`),
+    check(
+      "caddy_sites_kind_check",
+      sql`(${table.kind} = 'proxy' and ${table.upstream} is not null and ${table.redirectTarget} is null and ${table.redirectCode} is null) or (${table.kind} = 'redirect' and ${table.upstream} is null and ${table.redirectTarget} is not null and ${table.redirectCode} in (301, 302, 307, 308) and ${table.basicAuthHash} is null)`,
+    ),
     check(
       "caddy_sites_basic_auth_check",
       sql`(${table.basicAuthUsername} is null) = (${table.basicAuthHash} is null) and (${table.basicAuthHash} is null or ${table.tls} = 'automatic')`,

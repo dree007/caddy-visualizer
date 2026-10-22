@@ -15,7 +15,10 @@ const snapshotSchema = z.array(
   z.object({
     id: z.uuid(),
     hostname: z.string(),
-    upstream: z.string(),
+    kind: z.string().optional(),
+    upstream: z.string().nullable(),
+    redirectTarget: z.string().nullable().optional(),
+    redirectCode: z.number().nullable().optional(),
     tls: z.string(),
     enabled: z.boolean(),
     basicAuthUsername: z.string().nullable().optional(),

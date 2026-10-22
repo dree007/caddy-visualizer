@@ -2,6 +2,7 @@
 
 import {
   ArrowRight,
+  CornerUpRight,
   CircleAlert,
   KeyRound,
   Lock,
@@ -49,7 +50,10 @@ import {
 export interface SiteListItem {
   id: string;
   hostname: string;
-  upstream: string;
+  /** Upstream of a proxy, or target and status code of a redirect. */
+  target:
+    | { kind: "proxy"; url: string }
+    | { kind: "redirect"; url: string; code: number };
   tls: TlsMode;
   /** Protected by basic auth (never the credentials themselves). */
   basicAuth: boolean;
@@ -60,7 +64,7 @@ export interface SiteListItem {
   updatedLabel: string;
 }
 
-type Feedback = { tone: Tone; text: string };
+export type Feedback = { tone: Tone; text: string };
 
 /**
  * One markup for all sizes: a card list on phones, denser cards on tablets and
@@ -83,7 +87,7 @@ export function SiteList({ sites }: { sites: SiteListItem[] }) {
           className="eyebrow hidden px-6 pt-5 pb-3 lg:col-span-full lg:grid lg:grid-cols-subgrid lg:gap-x-6"
         >
           <span>{l.hostname}</span>
-          <span>{l.upstream}</span>
+          <span>{l.target}</span>
           <span>{l.tls}</span>
           <span>{l.changed}</span>
           <span>{l.status}</span>
@@ -140,9 +144,15 @@ function SiteRow({
       </p>
 
       <p className="flex min-w-0 items-center gap-1.5 font-mono text-sm text-muted-foreground [grid-area:upstream] lg:[grid-area:auto]">
-        <ArrowRight aria-hidden className="size-3.5 shrink-0 lg:hidden" />
-        <span className="sr-only">{l.upstream}: </span>
-        <span className="min-w-0 break-all">{site.upstream}</span>
+        {site.target.kind === "redirect" ? (
+          <CornerUpRight aria-hidden className="size-3.5 shrink-0" />
+        ) : (
+          <ArrowRight aria-hidden className="size-3.5 shrink-0 lg:hidden" />
+        )}
+        <span className="sr-only">
+          {site.target.kind === "redirect" ? l.redirectTo : l.upstream}:{" "}
+        </span>
+        <span className="min-w-0 break-all">{site.target.url}</span>
       </p>
 
       <div className="flex flex-wrap gap-1.5 [grid-area:tls] lg:[grid-area:auto]">
@@ -150,6 +160,11 @@ function SiteRow({
           <TlsIcon aria-hidden data-icon="inline-start" />
           {t.config.tls[site.tls].short}
         </Badge>
+        {site.target.kind === "redirect" ? (
+          <Badge variant="outline" className="text-muted-foreground">
+            {l.redirect(site.target.code)}
+          </Badge>
+        ) : null}
         {site.basicAuth ? (
           <Badge variant="outline" className="text-muted-foreground">
             <KeyRound aria-hidden data-icon="inline-start" />
@@ -309,7 +324,7 @@ function DeleteSiteDialog({
 }
 
 /** What was saved, plus what Caddy did with it. */
-function feedbackFor(
+export function feedbackFor(
   t: Messages,
   result: SiteActionResult,
   saved: string,
@@ -323,7 +338,7 @@ function feedbackFor(
   return { tone: apply.tone, text: `${saved} ${apply.text}${detail}` };
 }
 
-function FeedbackAlert({ feedback }: { feedback: Feedback }) {
+export function FeedbackAlert({ feedback }: { feedback: Feedback }) {
   const Icon = TONE_ICONS[feedback.tone];
   return (
     <Alert

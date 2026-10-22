@@ -57,6 +57,13 @@
       "when": 1792658534322,
       "tag": "0007_site_basic_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1792663332070,
+      "tag": "0008_redirect_sites",
+      "breakpoints": true
     }
   ]
 }

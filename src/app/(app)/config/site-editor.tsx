@@ -33,6 +33,11 @@ import {
   type SiteFieldErrors,
   validateSiteInput,
 } from "@/modules/caddy/contracts";
+import {
+  REDIRECT_CODES,
+  REDIRECT_TARGET_MAX_LENGTH,
+  SITE_KINDS,
+} from "@/modules/caddy/redirect";
 import { TLS_MODES } from "@/modules/caddy/tls";
 import {
   type SiteFormState,
@@ -52,7 +57,10 @@ type ClientErrors = Partial<Record<SiteField, string | null>>;
 
 const FIELD_ORDER: SiteField[] = [
   "hostname",
+  "kind",
   "upstream",
+  "redirectTarget",
+  "redirectCode",
   "tls",
   "enabled",
   "basicAuth",
@@ -95,9 +103,13 @@ export function SiteEditor({
     errors: ClientErrors;
   }>({ attempt: 0, errors: {} });
   const clientErrors = client.attempt === state.attempt ? client.errors : {};
-  const [tlsChoice, setTlsChoice] = useState({ attempt: 0, tls: "" });
+  // Choices made since the last response; -1 = none yet (use the form values).
+  const [tlsChoice, setTlsChoice] = useState({ attempt: -1, tls: "" });
   const tls =
     tlsChoice.attempt === state.attempt ? tlsChoice.tls : state.values.tls;
+  const [kindChoice, setKindChoice] = useState({ attempt: -1, kind: "" });
+  const kind =
+    kindChoice.attempt === state.attempt ? kindChoice.kind : state.values.kind;
   const { t } = useI18n();
   const e = t.config.editor;
 
@@ -228,74 +240,111 @@ export function SiteEditor({
             />
           </Field>
 
-          <Field
-            id="upstream"
-            label="Upstream"
-            hint={e.upstreamHint}
-            error={shown(upstreamError)}
-          >
-            <Input
-              id="upstream"
-              name="upstream"
-              data-field="upstream"
-              defaultValue={values.upstream}
-              placeholder="http://192.168.1.20:8080"
-              inputMode="url"
-              autoCapitalize="none"
-              autoCorrect="off"
-              autoComplete="off"
-              spellCheck={false}
-              maxLength={2048}
-              aria-invalid={upstreamError ? true : undefined}
-              aria-describedby={describedBy("upstream", upstreamError)}
-              onBlur={(event) => onBlur("upstream", event.currentTarget)}
-              onChange={(event) => onChange("upstream", event.currentTarget)}
-              className="h-11 font-mono md:h-9"
-            />
-          </Field>
+          <ChoiceGroup
+            name="kind"
+            label={e.kind}
+            defaultValue={values.kind}
+            options={SITE_KINDS.map((option) => ({
+              value: option,
+              ...e.kinds[option],
+            }))}
+            error={shown(errorFor("kind"))}
+            onValueChange={(value) => {
+              setKindChoice({ attempt: state.attempt, kind: value });
+              setClientError("kind", null);
+            }}
+          />
 
-          <div className="flex flex-col gap-2">
-            <span id="tls-label" className="text-sm font-medium">
-              TLS
-            </span>
-            <RadioGroup
-              name="tls"
-              defaultValue={values.tls}
-              aria-labelledby="tls-label"
-              aria-invalid={tlsError ? true : undefined}
-              aria-describedby={tlsError ? "tls-error" : undefined}
-              onValueChange={(value) => {
-                setTlsChoice({ attempt: state.attempt, tls: value });
-                setClientError("tls", null);
-                if (errorFor("basicAuth")) setClientError("basicAuth", null);
-              }}
-              className="grid gap-2 sm:grid-cols-2"
+          {kind === "redirect" ? (
+            <>
+              <Field
+                id="redirectTarget"
+                label={e.redirectTarget}
+                hint={e.redirectTargetHint}
+                error={shown(errorFor("redirectTarget"))}
+              >
+                <Input
+                  id="redirectTarget"
+                  name="redirectTarget"
+                  data-field="redirectTarget"
+                  defaultValue={values.redirectTarget}
+                  placeholder="https://www.example.com{uri}"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={REDIRECT_TARGET_MAX_LENGTH}
+                  aria-invalid={errorFor("redirectTarget") ? true : undefined}
+                  aria-describedby={describedBy(
+                    "redirectTarget",
+                    errorFor("redirectTarget"),
+                  )}
+                  onBlur={(event) =>
+                    onBlur("redirectTarget", event.currentTarget)
+                  }
+                  onChange={(event) =>
+                    onChange("redirectTarget", event.currentTarget)
+                  }
+                  className="h-11 font-mono md:h-9"
+                />
+              </Field>
+
+              <ChoiceGroup
+                name="redirectCode"
+                label={e.redirectCode}
+                defaultValue={values.redirectCode}
+                options={REDIRECT_CODES.map((status) => ({
+                  value: String(status),
+                  ...e.redirectCodes[status],
+                }))}
+                error={shown(errorFor("redirectCode"))}
+                onValueChange={() => setClientError("redirectCode", null)}
+              />
+            </>
+          ) : (
+            <Field
+              id="upstream"
+              label="Upstream"
+              hint={e.upstreamHint}
+              error={shown(upstreamError)}
             >
-              {TLS_MODES.map((mode) => (
-                <label
-                  key={mode}
-                  htmlFor={`tls-${mode}`}
-                  className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl bg-band p-4 transition-[background-color,box-shadow] duration-200 hover:bg-accent has-[[data-state=checked]]:bg-card has-[[data-state=checked]]:shadow-soft-sm"
-                >
-                  <RadioGroupItem
-                    id={`tls-${mode}`}
-                    value={mode}
-                    data-field={mode === TLS_MODES[0] ? "tls" : undefined}
-                    className="mt-0.5"
-                  />
-                  <span className="flex flex-col gap-1">
-                    <span className="text-sm leading-none font-medium">
-                      {t.config.tls[mode].title}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {t.config.tls[mode].description}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </RadioGroup>
-            <FieldError id="tls-error" error={shown(tlsError)} />
-          </div>
+              <Input
+                id="upstream"
+                name="upstream"
+                data-field="upstream"
+                defaultValue={values.upstream}
+                placeholder="http://192.168.1.20:8080"
+                inputMode="url"
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={2048}
+                aria-invalid={upstreamError ? true : undefined}
+                aria-describedby={describedBy("upstream", upstreamError)}
+                onBlur={(event) => onBlur("upstream", event.currentTarget)}
+                onChange={(event) => onChange("upstream", event.currentTarget)}
+                className="h-11 font-mono md:h-9"
+              />
+            </Field>
+          )}
+
+          <ChoiceGroup
+            name="tls"
+            label="TLS"
+            defaultValue={values.tls}
+            options={TLS_MODES.map((mode) => ({
+              value: mode,
+              ...t.config.tls[mode],
+            }))}
+            error={shown(tlsError)}
+            onValueChange={(value) => {
+              setTlsChoice({ attempt: state.attempt, tls: value });
+              setClientError("tls", null);
+              if (errorFor("basicAuth")) setClientError("basicAuth", null);
+            }}
+          />
 
           <div className="flex flex-col gap-2">
             <div className="flex items-start justify-between gap-4 rounded-2xl bg-band p-4">
@@ -317,18 +366,20 @@ export function SiteEditor({
             <FieldError id="enabled-error" error={shown(enabledError)} />
           </div>
 
-          <BasicAuthFields
-            values={values}
-            storedPassword={storedPassword}
-            httpsOnly={tls !== "off"}
-            errors={{
-              basicAuth: shown(errorFor("basicAuth")),
-              basicAuthUsername: shown(errorFor("basicAuthUsername")),
-              basicAuthPassword: shown(errorFor("basicAuthPassword")),
-            }}
-            onBlur={onBlur}
-            onChange={onChange}
-          />
+          {kind === "redirect" ? null : (
+            <BasicAuthFields
+              values={values}
+              storedPassword={storedPassword}
+              httpsOnly={tls !== "off"}
+              errors={{
+                basicAuth: shown(errorFor("basicAuth")),
+                basicAuthUsername: shown(errorFor("basicAuthUsername")),
+                basicAuthPassword: shown(errorFor("basicAuthPassword")),
+              }}
+              onBlur={onBlur}
+              onChange={onChange}
+            />
+          )}
         </fieldset>
 
         <div className="flex flex-col-reverse gap-2 border-t pt-5 sm:flex-row sm:justify-end">
@@ -517,6 +568,64 @@ function BasicAuthFields({
           ) : null}
         </>
       ) : null}
+    </div>
+  );
+}
+
+/** Radio cards (TLS mode, kind, redirect code); the first one takes the focus on errors. */
+function ChoiceGroup({
+  name,
+  label,
+  defaultValue,
+  options,
+  error,
+  onValueChange,
+}: {
+  name: SiteField;
+  label: string;
+  defaultValue: string;
+  options: { value: string; title: string; description: string }[];
+  error: string | undefined;
+  onValueChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span id={`${name}-label`} className="text-sm font-medium">
+        {label}
+      </span>
+      <RadioGroup
+        name={name}
+        defaultValue={defaultValue}
+        aria-labelledby={`${name}-label`}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${name}-error` : undefined}
+        onValueChange={onValueChange}
+        className="grid gap-2 sm:grid-cols-2"
+      >
+        {options.map((option, index) => (
+          <label
+            key={option.value}
+            htmlFor={`${name}-${option.value}`}
+            className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl bg-band p-4 transition-[background-color,box-shadow] duration-200 hover:bg-accent has-[[data-state=checked]]:bg-card has-[[data-state=checked]]:shadow-soft-sm"
+          >
+            <RadioGroupItem
+              id={`${name}-${option.value}`}
+              value={option.value}
+              data-field={index === 0 ? name : undefined}
+              className="mt-0.5"
+            />
+            <span className="flex flex-col gap-1">
+              <span className="text-sm leading-none font-medium">
+                {option.title}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {option.description}
+              </span>
+            </span>
+          </label>
+        ))}
+      </RadioGroup>
+      <FieldError id={`${name}-error`} error={error} />
     </div>
   );
 }

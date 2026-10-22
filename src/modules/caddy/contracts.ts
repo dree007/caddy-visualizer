@@ -9,6 +9,14 @@ import {
 } from "./basic-auth";
 import { parseSiteHostname } from "./hostname";
 import type { ParseResult } from "./parse-result";
+import {
+  parseRedirectCode,
+  parseRedirectTarget,
+  REDIRECT_CODES,
+  type RedirectCode,
+  SITE_KINDS,
+  type SiteKind,
+} from "./redirect";
 import { TLS_MODES } from "./tls";
 import { formatUpstream, parseUpstream } from "./upstream";
 
@@ -24,21 +32,31 @@ function domainString<T>(parse: (value: string) => ParseResult<T>) {
     });
 }
 
+const upstreamField = domainString(parseUpstream).transform(formatUpstream);
+
 const siteFields = {
   hostname: domainString(parseSiteHostname),
-  upstream: domainString(parseUpstream).transform(formatUpstream),
   tls: z.enum(TLS_MODES, { error: code("validation.tls") }),
   enabled: z.boolean({ error: code("validation.enabled") }).default(true),
+  kind: z.enum(SITE_KINDS, { error: code("validation.kind") }).default("proxy"),
 };
 
 /**
  * Input contract for creating or updating a managed site. Shared by the
  * application layer and the UI; the server always validates. Output values
- * are normalized (lower-case hostname, canonical upstream). The basic auth
- * password is plain text here and only hashed on the server.
+ * are normalized (lower-case hostname, canonical upstream). A site is a
+ * reverse proxy (`upstream`) or a redirect (`redirectTarget`, `redirectCode`);
+ * the fields of the other kind are ignored. The basic auth password is plain
+ * text here and only hashed on the server.
  */
 export const siteInputSchema = z.object({
   ...siteFields,
+  /** Checked per kind in `validateSiteInput`. */
+  upstream: z.unknown().optional(),
+  redirectTarget: z.string({ error: code("validation.invalid") }).default(""),
+  redirectCode: z
+    .union([z.string(), z.number()], { error: code("redirect.code") })
+    .default(""),
   basicAuth: z.boolean({ error: code("validation.invalid") }).default(false),
   basicAuthUsername: z
     .string({ error: code("validation.invalid") })
@@ -54,9 +72,13 @@ export type SiteFieldErrors = Partial<Record<SiteField, string>>;
 
 export interface ValidSiteInput {
   hostname: string;
-  upstream: string;
   tls: (typeof TLS_MODES)[number];
   enabled: boolean;
+  kind: SiteKind;
+  /** Set for proxies only. */
+  upstream: string | null;
+  /** Set for redirects only. */
+  redirect: { target: string; code: RedirectCode } | null;
   /** `password: null` keeps the stored hash. */
   basicAuth: { username: string; password: string | null } | null;
 }
@@ -93,6 +115,28 @@ export function validateSiteInput(
   }
 
   // Checked even when other fields are invalid, so all errors show at once.
+  const raw = (typeof input === "object" && input !== null ? input : {}) as {
+    kind?: unknown;
+    upstream?: unknown;
+  };
+  const kind = siteFields.kind.safeParse(raw.kind);
+  let upstream: string | null = null;
+  let redirect: ValidSiteInput["redirect"] = null;
+  if (kind.success && kind.data === "proxy") {
+    const parsedUpstream = upstreamField.safeParse(raw.upstream);
+    if (parsedUpstream.success) upstream = parsedUpstream.data;
+    else fieldErrors.upstream ??= parsedUpstream.error.issues[0]!.message;
+  }
+  if (kind.success && kind.data === "redirect" && result.success) {
+    const target = parseRedirectTarget(result.data.redirectTarget);
+    const status = parseRedirectCode(result.data.redirectCode);
+    if (!target.ok) fieldErrors.redirectTarget ??= target.message;
+    if (!status.ok) fieldErrors.redirectCode ??= status.message;
+    if (target.ok && status.ok) {
+      redirect = { target: target.value, code: status.value };
+    }
+  }
+
   let basicAuth: ValidSiteInput["basicAuth"] = null;
   const auth = basicAuthFields.safeParse(input);
   if (auth.success && auth.data.basicAuth) {
@@ -109,6 +153,10 @@ export function validateSiteInput(
     if (tls.success && tls.data === "off") {
       fieldErrors.basicAuth ??= code("basicAuth.requiresHttps");
     }
+    // Caddy runs `redir` before `basic_auth`: the redirect would be unprotected.
+    if (kind.success && kind.data === "redirect") {
+      fieldErrors.basicAuth ??= code("redirect.noBasicAuth");
+    }
     if (username.ok && (password === null || password.ok)) {
       basicAuth = {
         username: username.value,
@@ -118,10 +166,10 @@ export function validateSiteInput(
   }
 
   if (result.success && Object.keys(fieldErrors).length === 0) {
-    const { hostname, upstream, tls, enabled } = result.data;
+    const { hostname, tls, enabled, kind } = result.data;
     return {
       ok: true,
-      value: { hostname, upstream, tls, enabled, basicAuth },
+      value: { hostname, tls, enabled, kind, upstream, redirect, basicAuth },
     };
   }
   // Defensive: a non-object input has no field path.
@@ -134,11 +182,18 @@ export function validateSiteInput(
 /**
  * A site as stored and as the generator gets it: user name and bcrypt hash
  * instead of a password. Also checks rows and revision snapshots, which may be
- * older than basic auth (no fields = no basic auth).
+ * older than redirects or basic auth (missing fields = proxy without auth).
  */
 export const siteConfigSchema = z
   .object({
     ...siteFields,
+    upstream: upstreamField.nullable().default(null),
+    redirectTarget: domainString(parseRedirectTarget).nullable().default(null),
+    redirectCode: z
+      .number()
+      .refine((value) => REDIRECT_CODES.includes(value as RedirectCode))
+      .nullable()
+      .default(null),
     basicAuthUsername: domainString(parseBasicAuthUsername)
       .nullable()
       .default(null),
@@ -151,7 +206,19 @@ export const siteConfigSchema = z
   )
   .refine((site) => site.basicAuthHash === null || site.tls !== "off", {
     path: ["tls"],
-  });
+  })
+  .refine(
+    (site) =>
+      site.kind === "proxy"
+        ? site.upstream !== null &&
+          site.redirectTarget === null &&
+          site.redirectCode === null
+        : site.upstream === null &&
+          site.redirectTarget !== null &&
+          site.redirectCode !== null &&
+          site.basicAuthHash === null,
+    { path: ["kind"] },
+  );
 
 export type SiteConfigInput = z.input<typeof siteConfigSchema>;
 export type SiteConfig = z.output<typeof siteConfigSchema>;

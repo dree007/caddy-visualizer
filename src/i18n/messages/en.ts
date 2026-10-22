@@ -238,7 +238,7 @@ export const en = {
     },
     formCard: {
       title: "Form sites",
-      text: "Simple reverse proxies by form, written to sites.caddy.",
+      text: "Reverse proxies and redirects by form, written to sites.caddy.",
       none: "No form sites yet",
       count: (n: number, enabled: number) =>
         `${plural(n, "site", "sites")}, ${enabled} enabled`,
@@ -341,8 +341,11 @@ export const en = {
     list: {
       hostname: "Hostname",
       upstream: "Upstream",
+      target: "Target",
       tls: "TLS",
       basicAuth: "Basic auth",
+      redirect: (code: number) => `Redirect ${code}`,
+      redirectTo: "Redirect to",
       changed: "Changed",
       status: "Status",
       active: "Enabled",
@@ -384,6 +387,33 @@ export const en = {
       enabled: "Enabled",
       enabledHint:
         "Disabled sites stay stored but are left out of the generated configuration.",
+      kind: "Type",
+      kinds: {
+        proxy: {
+          title: "Reverse proxy",
+          description: "Caddy forwards requests to an upstream.",
+        },
+        redirect: {
+          title: "Redirect",
+          description: "Caddy answers with a redirect to another URL.",
+        },
+      },
+      redirectTarget: "Target",
+      redirectTargetHint:
+        "Absolute URL with http:// or https://. Placeholders such as {uri} (path and query) or {path} carry over parts of the request.",
+      redirectCode: "Type of redirect",
+      redirectCodes: {
+        301: {
+          title: "301 Permanent",
+          description: "Browsers cache it; may become GET.",
+        },
+        302: {
+          title: "302 Temporary",
+          description: "Not cached; may become GET.",
+        },
+        307: { title: "307 Temporary", description: "Keeps method and body." },
+        308: { title: "308 Permanent", description: "Keeps method and body." },
+      },
       basicAuth: "Enable basic auth",
       basicAuthHint:
         "Caddy asks for a user name and password before forwarding any request. Requires HTTPS.",
@@ -401,6 +431,23 @@ export const en = {
       generatePassword: "Generate",
       generatedNotice:
         "Password generated. Note it down now: it cannot be shown again after saving.",
+    },
+    accessLog: {
+      heading: "Access log for Caddyfile sites",
+      text: "Sites in your Caddyfile only appear in metrics and logs when they import the access_log snippet. Caddy Visualizer adds the line for you; Caddy checks the result first, and every change can be rolled back.",
+      enableAll: (n: number) =>
+        `Enable for all (${plural(n, "site", "sites")})`,
+      enableSelected: (n: number) => `Enable for selection (${n})`,
+      allActive: "All sites in your Caddyfile write to the access log.",
+      active: "Active",
+      oneLine: "On one line: add it in the editor",
+      snippetBelow:
+        "Above the (access_log) snippet: move the snippet up in the editor",
+      line: (n: number) => `Line ${n}`,
+      select: (sites: string) => `Select ${sites}`,
+      snippetMissing:
+        "Your Caddyfile does not define the (access_log) snippet yet. Add it first (see README, “Prepare Caddy”).",
+      saved: "import access_log was added.",
     },
     notFound: {
       title: "Site not found",
@@ -481,6 +528,21 @@ export const en = {
       "Please enter a valid upstream host (hostname, IPv4 or IPv6 address).",
     "upstream.port": "The port must be a number between 1 and 65535.",
     "site.duplicate": "A site with this hostname already exists.",
+    "accessLog.snippetMissing":
+      "The Caddyfile does not define the (access_log) snippet; nothing was changed.",
+    "accessLog.nothingToAdd": "The selected sites import access_log already.",
+    "validation.kind": "Please choose reverse proxy or redirect.",
+    "redirect.targetRequired": "Please enter a target URL.",
+    "redirect.targetTooLong": ({ max }: P) =>
+      `The target may have at most ${max} characters.`,
+    "redirect.targetScheme":
+      "The target must start with http:// or https://, e.g. https://www.example.com{uri}.",
+    "redirect.targetChars":
+      "The target may only contain URL characters and the placeholders {uri}, {path}, {query}, {host}, {hostport} and {scheme} (no spaces, quotes or #).",
+    "redirect.targetInvalid": "This is not a valid URL with a host.",
+    "redirect.code": "Please choose 301, 302, 307 or 308.",
+    "redirect.noBasicAuth":
+      "Basic auth is not available for redirects: Caddy would redirect before asking for credentials.",
     "basicAuth.usernameRequired": "Please enter a user name.",
     "basicAuth.usernameTooLong": ({ max }: P) =>
       `The user name may have at most ${max} characters.`,

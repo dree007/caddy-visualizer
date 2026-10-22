@@ -1,8 +1,9 @@
 "use client";
 
 import { CircleAlert, CircleCheck } from "lucide-react";
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 
+import { CaddyfileCode } from "@/components/caddyfile-code";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -37,6 +38,7 @@ export function CaddyfileEditor({
     if (state.result.outcome.state === "applied") setText(state.fileContent);
   }
   const dirty = text !== state.fileContent;
+  const highlight = useRef<HTMLPreElement>(null);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -44,18 +46,35 @@ export function CaddyfileEditor({
       <label htmlFor="caddyfile-content" className="sr-only">
         {c.content}
       </label>
-      <textarea
-        id="caddyfile-content"
-        name="content"
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        spellCheck={false}
-        autoCapitalize="none"
-        autoCorrect="off"
-        rows={28}
-        aria-describedby="caddyfile-result"
-        className="field min-h-96 w-full resize-y p-4 font-mono text-[0.8125rem] leading-relaxed [tab-size:4]"
-      />
+      {/* The highlighted copy lies under the textarea, whose own text is transparent. */}
+      <div className="field relative overflow-hidden focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/35">
+        <pre
+          ref={highlight}
+          aria-hidden
+          className="pointer-events-none absolute inset-0 m-0 overflow-hidden p-4 font-mono text-[0.8125rem] leading-relaxed whitespace-pre [tab-size:4]"
+        >
+          <CaddyfileCode text={`${text}\n`} />
+        </pre>
+        <textarea
+          id="caddyfile-content"
+          name="content"
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          onScroll={(event) => {
+            highlight.current?.scrollTo(
+              event.currentTarget.scrollLeft,
+              event.currentTarget.scrollTop,
+            );
+          }}
+          wrap="off"
+          spellCheck={false}
+          autoCapitalize="none"
+          autoCorrect="off"
+          rows={28}
+          aria-describedby="caddyfile-result"
+          className="relative block min-h-96 w-full resize-y bg-transparent p-4 font-mono text-[0.8125rem] leading-relaxed whitespace-pre [tab-size:4] text-transparent caret-foreground outline-none selection:bg-ring/25"
+        />
+      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <Button

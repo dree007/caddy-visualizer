@@ -1,10 +1,14 @@
 import type { SiteFieldErrors } from "@/modules/caddy/contracts";
+import type { SiteKind } from "@/modules/caddy/redirect";
 import type { TlsMode } from "@/modules/caddy/tls";
 
 /** Raw form values, echoed back so the form keeps the user's input after an error. */
 export interface SiteFormValues {
   hostname: string;
+  kind: SiteKind | string;
   upstream: string;
+  redirectTarget: string;
+  redirectCode: string;
   tls: TlsMode | string;
   enabled: boolean;
   basicAuth: boolean;
@@ -36,7 +40,10 @@ export type SiteActionResult =
 
 export const emptySiteFormValues: SiteFormValues = {
   hostname: "",
+  kind: "proxy",
   upstream: "",
+  redirectTarget: "",
+  redirectCode: "308",
   tls: "automatic",
   enabled: true,
   basicAuth: false,
@@ -60,7 +67,10 @@ function text(formData: FormData, name: string): string {
 export function siteFormValues(formData: FormData): SiteFormValues {
   return {
     hostname: text(formData, "hostname"),
+    kind: text(formData, "kind") || "proxy",
     upstream: text(formData, "upstream"),
+    redirectTarget: text(formData, "redirectTarget"),
+    redirectCode: text(formData, "redirectCode"),
     tls: text(formData, "tls"),
     enabled: formData.get("enabled") === "on",
     basicAuth: formData.get("basicAuth") === "on",

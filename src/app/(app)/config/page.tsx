@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import type { Messages } from "@/i18n";
 import { getI18n } from "@/i18n/server";
 import { formatDateTime } from "@/lib/format";
+import { sha256Of } from "@/lib/sha256";
+import { listCaddyfileSites } from "@/modules/caddy/caddyfile-sites";
 import { parseSiteHostname } from "@/modules/caddy/hostname";
 import { definesAccessLogSnippet } from "@/modules/caddy/main-caddyfile";
 import { loadSitesOverview } from "@/modules/caddy/overview";
@@ -28,6 +30,7 @@ import {
 import type { ApplyOutcome } from "@/server/caddy/site-form";
 import { getDb } from "@/server/db";
 
+import { CaddyfileAccessLog } from "./caddyfile-access-log";
 import { ConfigPreview } from "./config-preview";
 import { FlashNotice } from "./flash-notice";
 import { RevisionHistory } from "./revision-history";
@@ -67,7 +70,14 @@ export default async function ConfigPage({
   const items: SiteListItem[] = sites.map((site) => ({
     id: site.id,
     hostname: site.hostname,
-    upstream: site.upstream,
+    target:
+      site.kind === "redirect"
+        ? {
+            kind: "redirect",
+            url: site.redirectTarget ?? "",
+            code: site.redirectCode ?? 0,
+          }
+        : { kind: "proxy", url: site.upstream ?? "" },
     tls: site.tls,
     basicAuth: site.basicAuthHash !== null,
     enabled: site.enabled,
@@ -75,6 +85,7 @@ export default async function ConfigPage({
     updatedLabel: formatDateTime(site.updatedAt, locale),
   }));
   const enabledCount = sites.filter((site) => site.enabled).length;
+  const caddyfileSites = main === null ? [] : listCaddyfileSites(main);
   const running = configured ? await loadRunningSites() : null;
   const manualCount =
     running?.state === "ok"
@@ -126,6 +137,14 @@ export default async function ConfigPage({
           />
         </div>
       </section>
+
+      {main !== null && caddyfileSites.length > 0 ? (
+        <CaddyfileAccessLog
+          sites={caddyfileSites}
+          baseSha256={sha256Of(main)}
+          snippetDefined={definesAccessLogSnippet(main)}
+        />
+      ) : null}
 
       {items.length > 0 ? (
         <section

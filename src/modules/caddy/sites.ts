@@ -41,10 +41,15 @@ type HashPassword = (password: string) => Promise<string>;
 
 /** The stored columns of validated input; hashes a new password, keeps the old hash otherwise. */
 async function storedValues(
-  { basicAuth, ...values }: ValidSiteInput,
+  { basicAuth, redirect, ...rest }: ValidSiteInput,
   existingHash: string | null,
   hash: HashPassword,
 ): Promise<Omit<ManagedSite, "id" | "createdAt" | "updatedAt">> {
+  const values = {
+    ...rest,
+    redirectTarget: redirect?.target ?? null,
+    redirectCode: redirect?.code ?? null,
+  };
   if (!basicAuth) {
     return { ...values, basicAuthUsername: null, basicAuthHash: null };
   }
