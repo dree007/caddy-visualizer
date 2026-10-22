@@ -22,7 +22,8 @@
   </tr>
 </table>
 
-Changelog v1.2.0
+## Changelog v1.2.0
+
 - Form sites can be redirects: any http(s) target, placeholders such as
 {uri} allowed, with 301, 302, 307 or 308 (Caddy's redir). Basic auth stays
 reserved for reverse proxies, since Caddy redirects before it would ask.
