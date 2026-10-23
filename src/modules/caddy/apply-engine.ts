@@ -20,7 +20,7 @@ import {
   validateMainEdit,
 } from "./main-caddyfile";
 import { restoreRevisionSnapshot } from "./rollback";
-import type { InstanceLock } from "./instance-lock";
+import type { InstanceLock, InstanceLockFailure } from "./instance-lock";
 import { type ManagedFiles, writeInPlace } from "./managed-files";
 import {
   type ConfigRevision,
@@ -125,8 +125,11 @@ export interface ApplyEngine {
   applyCaddyfile(content: string, baseSha256: string): Promise<RollbackResult>;
   /** True while an apply, rollback or recovery runs or waits. */
   readonly busy: boolean;
-  /** Whether this process may apply (holds the instance lock, or has none). */
-  holdsInstanceLock(): boolean;
+  /**
+   * Tries the instance lock: null if this process may apply (holds it, or has
+   * none), otherwise why not.
+   */
+  instanceLockFailure(): InstanceLockFailure | null;
 }
 
 /** Message codes (see src/i18n); stored as `errorMessage`, translated for display. */
@@ -148,6 +151,7 @@ export const APPLY_MESSAGES = {
   manualConflict: (hostname: string, pattern: string) =>
     code("apply.manualConflict", { hostname, pattern }),
   otherInstance: code("apply.otherInstance"),
+  lockUnavailable: code("apply.lockUnavailable"),
   rollbackSource: code("apply.rollbackSource"),
 } as const;
 
@@ -169,11 +173,21 @@ export function createApplyEngine(options: ApplyEngineOptions): ApplyEngine {
   } = options;
   const mutex = createMutex();
 
-  /** Takes (or confirms) the instance lock; retried on every operation. */
-  function holdsLock(): boolean {
-    if (!lock || lock.acquire()) return true;
+  /**
+   * Takes (or confirms) the instance lock; retried on every operation.
+   * Null if this process may apply, otherwise the message code why not.
+   */
+  function lockRefusal(): string | null {
+    if (!lock || lock.acquire()) return null;
+    const failure = lock.failure;
+    if (failure?.reason === "unavailable") {
+      log.error("instance lock unavailable; nothing applied", {
+        error: failure.error,
+      });
+      return APPLY_MESSAGES.lockUnavailable;
+    }
     log.warn("another manager instance holds the lock; nothing applied");
-    return false;
+    return APPLY_MESSAGES.otherInstance;
   }
 
   const fields = (revision: ConfigRevision, extra = {}) => ({
@@ -459,7 +473,7 @@ export function createApplyEngine(options: ApplyEngineOptions): ApplyEngine {
   async function recoverUnlocked(): Promise<RecoveryResult> {
     const latest = latestRevision(db);
     if (!latest) return { revision: null };
-    if (!holdsLock()) return { revision: latest };
+    if (lockRefusal()) return { revision: latest };
 
     for (const older of otherUnresolvedRevisions(db, latest.id)) {
       if (older.status === "pending")
@@ -621,11 +635,12 @@ export function createApplyEngine(options: ApplyEngineOptions): ApplyEngine {
   return {
     apply(trigger) {
       return mutex.run(async () => {
-        if (!holdsLock()) {
+        const refusal = lockRefusal();
+        if (refusal) {
           return {
             status: "failed",
             revision: null,
-            message: APPLY_MESSAGES.otherInstance,
+            message: refusal,
           } as const;
         }
         await recoverSafely();
@@ -668,10 +683,11 @@ export function createApplyEngine(options: ApplyEngineOptions): ApplyEngine {
 
     rollback(revisionId) {
       return mutex.run(async () => {
-        if (!holdsLock()) {
+        const refusal = lockRefusal();
+        if (refusal) {
           return {
             status: "rejected",
-            message: APPLY_MESSAGES.otherInstance,
+            message: refusal,
           } as const;
         }
         await recoverSafely();
@@ -723,8 +739,9 @@ export function createApplyEngine(options: ApplyEngineOptions): ApplyEngine {
 
     checkCaddyfile(content) {
       return mutex.run(async () => {
-        if (!holdsLock()) {
-          return { ok: false, message: APPLY_MESSAGES.otherInstance } as const;
+        const refusal = lockRefusal();
+        if (refusal) {
+          return { ok: false, message: refusal } as const;
         }
         return checkCaddyfileUnlocked(content);
       });
@@ -732,10 +749,11 @@ export function createApplyEngine(options: ApplyEngineOptions): ApplyEngine {
 
     applyCaddyfile(content, baseSha256) {
       return mutex.run(async () => {
-        if (!holdsLock()) {
+        const refusal = lockRefusal();
+        if (refusal) {
           return {
             status: "rejected",
-            message: APPLY_MESSAGES.otherInstance,
+            message: refusal,
           } as const;
         }
         return applyCaddyfileUnlocked(content, baseSha256);
@@ -746,8 +764,8 @@ export function createApplyEngine(options: ApplyEngineOptions): ApplyEngine {
       return mutex.busy;
     },
 
-    holdsInstanceLock() {
-      return !lock || lock.acquire();
+    instanceLockFailure() {
+      return !lock || lock.acquire() ? null : lock.failure;
     },
   };
 }

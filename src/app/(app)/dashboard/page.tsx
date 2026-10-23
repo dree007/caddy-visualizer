@@ -57,7 +57,7 @@ export default async function DashboardPage() {
           />
         ) : (
           <>
-            <StatTiles totals={traffic.metrics.totals} />
+            <StatTiles metrics={traffic.metrics} />
             <RequestsChart
               title={d.requestsPerHour}
               buckets={chartBuckets(traffic.metrics, locale, t)}

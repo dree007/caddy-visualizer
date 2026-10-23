@@ -33,12 +33,18 @@ export async function loadLogEntries(query: LogQuery) {
 /** In-memory state of the reader plus the persisted cursor counters. */
 export async function loadIngestionStatus() {
   await requireSession();
-  const path = getEnv().CADDY_ACCESS_LOG_FILE;
+  const env = getEnv();
+  const path = env.CADDY_ACCESS_LOG_FILE;
   const cursor =
     getDb()
       .select()
       .from(ingestionCursors)
       .where(eq(ingestionCursors.path, path))
       .get() ?? null;
-  return { path, runtime: ingestionStatus(), cursor };
+  return {
+    path,
+    managedDir: env.CADDY_MANAGED_DIR,
+    runtime: ingestionStatus(),
+    cursor,
+  };
 }

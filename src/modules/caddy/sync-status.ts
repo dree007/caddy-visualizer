@@ -1,6 +1,7 @@
 import type { Db } from "@/server/db/client";
 
 import { generateSitesCaddy, SiteGeneratorError } from "./generator";
+import type { InstanceLockFailure } from "./instance-lock";
 import { definesAccessLogSnippet } from "./main-caddyfile";
 import {
   type ConfigRevision,
@@ -30,7 +31,9 @@ export type SyncState =
   /** No managed sites and nothing applied yet: there is nothing to sync. */
   | "idle"
   /** Another manager instance holds the lock; this one does not apply. */
-  | "other-instance";
+  | "other-instance"
+  /** The lock file in the managed directory cannot be used; nothing applies. */
+  | "lock-unavailable";
 
 export interface SyncStatus {
   state: SyncState;
@@ -52,12 +55,13 @@ export async function loadSyncStatus(
   {
     configured,
     applying,
-    activeInstance = true,
+    lockFailure = null,
     readMain,
   }: {
     configured: boolean;
     applying: boolean;
-    activeInstance?: boolean;
+    /** Why this process may not apply (see `InstanceLockFailure`); null if it may. */
+    lockFailure?: InstanceLockFailure["reason"] | null;
     /** Reads the main Caddyfile (a local file, not a Caddy request). */
     readMain?: () => Promise<string>;
   },
@@ -77,7 +81,7 @@ export async function loadSyncStatus(
     state: syncState({
       configured,
       applying,
-      activeInstance,
+      lockFailure,
       latest,
       lastApplied,
       desiredSha256,
@@ -93,7 +97,7 @@ export async function loadSyncStatus(
 export function syncState({
   configured,
   applying,
-  activeInstance = true,
+  lockFailure = null,
   latest,
   lastApplied,
   desiredSha256,
@@ -101,14 +105,15 @@ export function syncState({
 }: {
   configured: boolean;
   applying: boolean;
-  activeInstance?: boolean;
+  lockFailure?: InstanceLockFailure["reason"] | null;
   latest: ConfigRevision | null;
   lastApplied: ConfigRevision | null;
   desiredSha256: string | null;
   desiredMain?: string | null;
 }): SyncState {
   if (!configured) return "not-configured";
-  if (!activeInstance) return "other-instance";
+  if (lockFailure === "busy") return "other-instance";
+  if (lockFailure === "unavailable") return "lock-unavailable";
   if (applying) return "applying";
   if (latest?.status === "pending" || latest?.status === "loading") {
     return "checking";

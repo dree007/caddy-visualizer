@@ -3,7 +3,7 @@
 
 ARG NODE_VERSION=24-bookworm-slim
 # Reviewed Node 24 / Debian 13 runtime; update digest only after scan + smoke tests.
-ARG NODE_RUNTIME_IMAGE=gcr.io/distroless/nodejs24-debian13:nonroot@sha256:9eeb7f5887d0e239e78264b06f7f11d2e14be534050481803a9e4728fcdd278e
+ARG NODE_RUNTIME_IMAGE=gcr.io/distroless/nodejs24-debian13:nonroot@sha256:78f07ef1b5ea71ad7c055df15d0dd8997f2d288f9158623c4d4ae3d765b7d50d
 
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app

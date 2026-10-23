@@ -7,7 +7,10 @@ import {
   type ApplyLogger,
   createApplyEngine,
 } from "@/modules/caddy/apply-engine";
-import { createInstanceLock } from "@/modules/caddy/instance-lock";
+import {
+  createInstanceLock,
+  type InstanceLockFailure,
+} from "@/modules/caddy/instance-lock";
 import { createManagedFiles } from "@/modules/caddy/managed-files";
 import { getDb } from "@/server/db";
 import { getEnv } from "@/server/env";
@@ -66,9 +69,13 @@ export function readMainCaddyfile(): Promise<string> {
   return readFile(getEnv().CADDY_MAIN_CADDYFILE, "utf8");
 }
 
-/** False if another manager instance holds the lock of the managed directory. */
-export function isActiveInstance(): boolean {
-  return getApplyEngine()?.holdsInstanceLock() ?? true;
+/**
+ * Why this process may not apply and ingest: another manager instance holds
+ * the lock of the managed directory, or the lock file cannot be used. Null if
+ * it may (or Caddy is not configured).
+ */
+export function instanceLockFailure(): InstanceLockFailure | null {
+  return getApplyEngine()?.instanceLockFailure() ?? null;
 }
 
 export function isApplyRunning(): boolean {

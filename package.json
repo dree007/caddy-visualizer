@@ -1,6 +1,6 @@
 {
   "name": "caddy-visualizer",
-  "version": "1.2.0",
+  "version": "1.3.2",
   "private": true,
   "type": "module",
   "engines": {
@@ -18,7 +18,7 @@
     "cn": "0.4.0",
     "drizzle-orm": "0.45.3",
     "lucide-react": "1.51.0",
-    "next": "16.3.8",
+    "next": "16.4.2",
     "next-themes": "0.4.6",
     "radix-ui": "1.6.7",
     "react": "19.2.8",
@@ -35,13 +35,13 @@
     "@types/react-dom": "19.3.0",
     "drizzle-kit": "0.31.11",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.2",
     "prettier": "3.9.9",
     "prettier-plugin-tailwindcss": "0.8.1",
     "shadcn": "4.21.1",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
-    "vitest": "5.0.3"
+    "vitest": "5.0.5"
   },
   "allowScripts": {
     "esbuild": false,

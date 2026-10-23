@@ -23,6 +23,7 @@ export const SYNC_TONES: Record<SyncState, Tone> = {
   "out-of-sync": "warning",
   idle: "neutral",
   "other-instance": "warning",
+  "lock-unavailable": "error",
   "not-configured": "neutral",
 };
 

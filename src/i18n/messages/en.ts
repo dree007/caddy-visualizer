@@ -124,6 +124,14 @@ export const en = {
       requestCount: (n: string) => `${n} requests`,
       max: (value: string) => `max. ${value}`,
     },
+    trend: {
+      new: "new",
+      versus: {
+        "24h": "vs. previous 24 h",
+        "7d": "vs. previous 7 days",
+        "30d": "vs. previous 30 days",
+      },
+    },
     chart: {
       bar: (label: string, requests: string, errors: string) =>
         `${label}: ${requests} requests, ${errors} server errors`,
@@ -216,6 +224,7 @@ export const en = {
         unreadable: "No read permission",
         error: "Reading failed",
         passive: "Another instance is reading",
+        "lock-unavailable": "Managed directory not writable",
       },
       lastRun: "Last run",
       skipped: "Skipped lines",
@@ -224,6 +233,8 @@ export const en = {
         "Caddy does not write an access log here yet. Setup: README, section “Prepare Caddy”.",
       unreadableHelp:
         "The file is not readable for the manager (UID 1000), usually because Caddy created it before “mode 644” was in the Caddyfile. Run once:",
+      lockUnavailableHelp:
+        "The manager (UID 1000) cannot create its lock file in the managed directory, usually because the directory is missing (README, section “Prepare Caddy”) or belongs to root. Until then it neither reads the access log nor applies changes. Run once; it picks up the change within seconds:",
     },
   },
   config: {
@@ -267,6 +278,7 @@ export const en = {
       "out-of-sync": "Not applied",
       idle: "Nothing applied yet",
       "other-instance": "Another instance is active",
+      "lock-unavailable": "Managed directory not writable",
       "not-configured": "Caddy connection not configured",
     },
     syncDetail: {
@@ -282,6 +294,8 @@ export const en = {
       idle: "As soon as you save the Caddyfile or add a form site, the configuration is checked and applied to Caddy.",
       otherInstance:
         "Another Caddy Visualizer instance manages this Caddy configuration. This one stores changes but applies nothing. Only one instance may run.",
+      lockUnavailable:
+        "Caddy Visualizer cannot create its lock file in the managed directory (CADDY_MANAGED_DIR). Changes are stored but not applied. Make the directory writable for UID 1000; the access log card in the settings shows the command.",
       notConfigured:
         "Changes are only stored until the connection to Caddy is set up.",
       applyAgain: "Apply again",
@@ -596,6 +610,8 @@ export const en = {
       `The hostname ${p.hostname} is already used in the Caddyfile${p.pattern === p.hostname ? "" : ` (${p.pattern})`}. Form sites must not override sites there.`,
     "apply.otherInstance":
       "Another Caddy Visualizer instance manages this configuration. Nothing was sent to Caddy here.",
+    "apply.lockUnavailable":
+      "The managed directory is not writable for Caddy Visualizer (lock file). Nothing was sent to Caddy.",
     "apply.rollbackSource":
       "Only revisions that were applied successfully once can be restored.",
     "apply.mainConflict":

@@ -8,7 +8,10 @@ import {
   STATUS_CLASSES,
 } from "@/modules/access-log/queries";
 
+import { trendOf } from "@/modules/access-log/trends";
+
 import { MiniColumns } from "./mini-columns";
+import { TrendBadge } from "./trend";
 import { STATUS, StatusBreakdown } from "./status-breakdown";
 
 /** Codes shown as cards; the rest are only in the table. */
@@ -71,9 +74,27 @@ export async function StatusCodes({
                       {s.peak(count(peak(values)))}
                     </span>
                   </div>
-                  <p className="font-display text-[1.75rem] leading-none font-light tracking-[-0.02em] tabular-nums">
-                    {count(metrics.totals.byClass[c])}
-                  </p>
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <p className="font-display text-[1.75rem] leading-none font-light tracking-[-0.02em] tabular-nums">
+                      {count(metrics.totals.byClass[c])}
+                    </p>
+                    <TrendBadge
+                      trend={trendOf(
+                        metrics.totals.byClass[c],
+                        metrics.previous.totals.requests > 0
+                          ? metrics.previous.totals.byClass[c]
+                          : null,
+                      )}
+                      polarity={
+                        c === "4xx" || c === "5xx"
+                          ? "lower-is-better"
+                          : "neutral"
+                      }
+                      range={metrics.range}
+                      locale={locale}
+                      t={t}
+                    />
+                  </div>
                   <MiniColumns
                     values={values}
                     labels={labels}

@@ -42,7 +42,7 @@ export default async function MetricsPage({
         />
       ) : (
         <>
-          <StatTiles totals={metrics.totals} />
+          <StatTiles metrics={metrics} />
           <RequestsChart
             title={
               range === "24h"
@@ -55,7 +55,11 @@ export default async function MetricsPage({
             metrics={metrics}
             labels={buckets.map((bucket) => bucket.label)}
           />
-          <HostsTable hosts={metrics.hosts} range={range} />
+          <HostsTable
+            hosts={metrics.hosts}
+            previous={metrics.previous.hosts}
+            range={range}
+          />
         </>
       )}
     </div>

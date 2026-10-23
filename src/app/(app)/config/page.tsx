@@ -22,7 +22,7 @@ import { loadSyncStatus } from "@/modules/caddy/sync-status";
 import { requireSession } from "@/server/auth/session";
 import { loadRunningSites } from "@/server/caddy/admin";
 import {
-  isActiveInstance,
+  instanceLockFailure,
   isApplyRunning,
   isCaddyConfigured,
   readMainCaddyfile,
@@ -60,7 +60,7 @@ export default async function ConfigPage({
     loadSyncStatus(db, {
       configured,
       applying: isApplyRunning(),
-      activeInstance: !configured || isActiveInstance(),
+      lockFailure: configured ? (instanceLockFailure()?.reason ?? null) : null,
       readMain: main === null ? undefined : async () => main,
     }),
   ]);

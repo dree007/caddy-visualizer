@@ -2,7 +2,7 @@ import { ingestOnce, pruneAccessLog } from "@/modules/access-log/ingest";
 import { getDb } from "@/server/db";
 import { getEnv } from "@/server/env";
 
-import { isActiveInstance } from "../caddy/engine";
+import { instanceLockFailure } from "../caddy/engine";
 import { code } from "@/i18n/codes";
 
 /*
@@ -16,7 +16,14 @@ const PRUNE_EVERY_MS = 3600_000;
 
 export interface IngestionStatus {
   path: string;
-  state: "idle" | "missing" | "unreadable" | "ok" | "error" | "passive";
+  state:
+    | "idle"
+    | "missing"
+    | "unreadable"
+    | "ok"
+    | "error"
+    | "passive"
+    | "lock-unavailable";
   lastRunAt: Date | null;
   lastStored: number;
   message?: string;
@@ -59,8 +66,15 @@ export function startIngestion(log: Pick<Console, "info" | "warn">): void {
     if (running) return;
     running = true;
     try {
-      if (!isActiveInstance()) {
-        status.state = "passive";
+      const lockFailure = instanceLockFailure();
+      if (lockFailure) {
+        // An unusable lock file is not another instance: say why (and log it).
+        Object.assign(
+          status,
+          lockFailure.reason === "busy"
+            ? { state: "passive", message: undefined }
+            : { state: "lock-unavailable", message: lockFailure.error },
+        );
         return;
       }
       const db = getDb();
@@ -78,7 +92,11 @@ export function startIngestion(log: Pick<Console, "info" | "warn">): void {
       status.lastRunAt = new Date();
       if (status.state !== lastState) {
         const line = `[access-log] ${path}: ${status.state}${status.message ? ` (${status.message})` : ""}`;
-        if (status.state === "error" || status.state === "unreadable")
+        if (
+          status.state === "error" ||
+          status.state === "unreadable" ||
+          status.state === "lock-unavailable"
+        )
           log.warn(line);
         else log.info(line);
         lastState = status.state;

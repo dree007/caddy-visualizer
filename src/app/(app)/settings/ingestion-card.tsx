@@ -6,10 +6,8 @@ import { formatCount, formatDateTime } from "@/lib/format";
 import { loadIngestionStatus } from "@/server/access-log/queries";
 
 export async function IngestionCard() {
-  const [{ path, runtime, cursor }, { locale, t }] = await Promise.all([
-    loadIngestionStatus(),
-    getI18n(),
-  ]);
+  const [{ path, managedDir, runtime, cursor }, { locale, t }] =
+    await Promise.all([loadIngestionStatus(), getI18n()]);
   const g = t.settings.ingestion;
   const state = runtime?.state ?? "idle";
   return (
@@ -34,7 +32,10 @@ export async function IngestionCard() {
         <dt className="text-muted-foreground">{g.status}</dt>
         <dd
           className={
-            state === "error" || state === "missing" || state === "unreadable"
+            state === "error" ||
+            state === "missing" ||
+            state === "unreadable" ||
+            state === "lock-unavailable"
               ? "text-destructive"
               : undefined
           }
@@ -67,6 +68,14 @@ export async function IngestionCard() {
           <p>{g.unreadableHelp}</p>
           <code className="code-well block px-4 py-3 [overflow-wrap:anywhere] text-foreground select-all">
             docker exec caddy chmod 644 {path}
+          </code>
+        </div>
+      ) : null}
+      {state === "lock-unavailable" ? (
+        <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+          <p>{g.lockUnavailableHelp}</p>
+          <code className="code-well block px-4 py-3 [overflow-wrap:anywhere] text-foreground select-all">
+            {`docker exec caddy sh -c "mkdir -p ${managedDir} && chown -R 1000:1000 ${managedDir}"`}
           </code>
         </div>
       ) : null}

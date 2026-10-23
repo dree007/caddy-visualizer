@@ -125,6 +125,14 @@ export const de: Messages = {
       requestCount: (n) => `${n} Requests`,
       max: (value) => `max. ${value}`,
     },
+    trend: {
+      new: "neu",
+      versus: {
+        "24h": "ggü. vorherigen 24 h",
+        "7d": "ggü. vorherigen 7 Tagen",
+        "30d": "ggü. vorherigen 30 Tagen",
+      },
+    },
     chart: {
       bar: (label, requests, errors) =>
         `${label}: ${requests} Requests, ${errors} Serverfehler`,
@@ -220,6 +228,7 @@ export const de: Messages = {
         unreadable: "Keine Leseberechtigung",
         error: "Fehler beim Einlesen",
         passive: "Andere Instanz liest ein",
+        "lock-unavailable": "Verwaltetes Verzeichnis nicht beschreibbar",
       },
       lastRun: "Letzter Lauf",
       skipped: "Übersprungene Zeilen",
@@ -228,6 +237,8 @@ export const de: Messages = {
         "Caddy schreibt noch kein Access Log an diese Stelle. Einrichtung: README, Abschnitt „Prepare Caddy“.",
       unreadableHelp:
         "Die Datei ist für den Manager (UID 1000) nicht lesbar, meist weil Caddy sie angelegt hat, bevor „mode 644“ in der Caddyfile stand. Einmal ausführen:",
+      lockUnavailableHelp:
+        "Der Manager (UID 1000) kann seine Lock-Datei im verwalteten Verzeichnis nicht anlegen, meist weil das Verzeichnis fehlt (README, Abschnitt „Prepare Caddy“) oder root gehört. Bis dahin liest er weder das Access Log ein noch wendet er Änderungen an. Einmal ausführen; die Änderung greift nach wenigen Sekunden:",
     },
   },
   config: {
@@ -271,6 +282,7 @@ export const de: Messages = {
       "out-of-sync": "Nicht angewendet",
       idle: "Noch nichts angewendet",
       "other-instance": "Andere Instanz aktiv",
+      "lock-unavailable": "Verwaltetes Verzeichnis nicht beschreibbar",
       "not-configured": "Caddy-Anbindung nicht konfiguriert",
     },
     syncDetail: {
@@ -288,6 +300,8 @@ export const de: Messages = {
       idle: "Sobald du die Caddyfile speicherst oder eine Formular-Site anlegst, wird die Konfiguration geprüft und auf Caddy angewendet.",
       otherInstance:
         "Eine andere Instanz von Caddy Visualizer verwaltet diese Caddy-Konfiguration. Diese Instanz speichert Änderungen, wendet aber nichts an. Es darf nur eine Instanz laufen.",
+      lockUnavailable:
+        "Caddy Visualizer kann seine Lock-Datei im verwalteten Verzeichnis (CADDY_MANAGED_DIR) nicht anlegen. Änderungen werden gespeichert, aber nicht angewendet. Mach das Verzeichnis für UID 1000 beschreibbar; den Befehl zeigt die Access-Log-Karte in den Einstellungen.",
       notConfigured:
         "Änderungen werden nur gespeichert, bis die Verbindung zu Caddy eingerichtet ist.",
       applyAgain: "Erneut anwenden",
@@ -612,6 +626,8 @@ export const de: Messages = {
       `Der Hostname ${p.hostname} wird bereits in der Caddyfile verwendet${p.pattern === p.hostname ? "" : ` (${p.pattern})`}. Formular-Sites dürfen dortige Sites nicht überschreiben.`,
     "apply.otherInstance":
       "Eine andere Instanz von Caddy Visualizer verwaltet diese Konfiguration. Hier wurde nichts an Caddy übertragen.",
+    "apply.lockUnavailable":
+      "Das verwaltete Verzeichnis ist für Caddy Visualizer nicht beschreibbar (Lock-Datei). Nichts wurde an Caddy übertragen.",
     "apply.rollbackSource":
       "Nur Revisionen, die schon einmal erfolgreich angewendet wurden, können wiederhergestellt werden.",
     "apply.mainConflict":

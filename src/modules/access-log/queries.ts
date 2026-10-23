@@ -47,6 +47,12 @@ export interface HostRow {
 export interface Metrics {
   range: Range;
   totals: MetricsTotals;
+  /**
+   * The period before, of the same length and up to the same point in time
+   * (e.g. yesterday 00:00 to 12:30 against today 00:00 to 12:30), so a running
+   * hour or day does not make the current numbers look smaller.
+   */
+  previous: { totals: MetricsTotals; hosts: HostRow[] };
   series: SeriesPoint[];
   /** Every status code in the range, most frequent first. */
   codes: CodeRow[];
@@ -68,21 +74,23 @@ export function loadMetrics(
 ): Metrics {
   const buckets = bucketsOf(range, now, timeZone);
   const from = buckets[0]!.start;
-  const filter = and(
-    gte(trafficHourly.bucketStart, from),
-    host ? eq(trafficHourly.host, host) : undefined,
-  );
-  const rows = db.select().from(trafficHourly).where(filter).all();
+  const rowsBetween = (start: number, end?: number) =>
+    db
+      .select()
+      .from(trafficHourly)
+      .where(
+        and(
+          gte(trafficHourly.bucketStart, start),
+          end === undefined ? undefined : lt(trafficHourly.bucketStart, end),
+          host ? eq(trafficHourly.host, host) : undefined,
+        ),
+      )
+      .all();
+  const rows = rowsBetween(from);
+  const span = SPANS[range];
+  const previous = summarize(rowsBetween(from - span, now.getTime() - span));
 
-  const totals: MetricsTotals = {
-    requests: 0,
-    bytes: 0,
-    avgMs: null,
-    maxMs: null,
-    byClass: { "2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0 },
-  };
-  let durationSum = 0;
-  const hosts = new Map<string, HostRow & { durationSum: number }>();
+  const { totals, hosts } = summarize(rows);
   const points: SeriesPoint[] = buckets.map((bucket) => ({
     ...bucket,
     requests: 0,
@@ -93,14 +101,8 @@ export function loadMetrics(
   const codes = new Map<number, CodeRow>();
 
   for (const row of rows) {
-    totals.requests += row.requests;
-    totals.bytes += row.bytesOut;
-    durationSum += row.durationMsSum;
-    totals.maxMs = Math.max(totals.maxMs ?? 0, row.durationMsMax);
     const statusClass = classOf(row.status);
-    if (statusClass) totals.byClass[statusClass] += row.requests;
     const errors = row.status >= 500 ? row.requests : 0;
-
     const index = indexOf(row.bucketStart);
     const point = points[index];
     if (point) {
@@ -119,6 +121,47 @@ export function loadMetrics(
     }
     code.requests += row.requests;
     if (point) code.series[index]! += row.requests;
+  }
+
+  return {
+    range,
+    totals,
+    previous,
+    series: points,
+    codes: [...codes.values()].sort(
+      (a, b) => b.requests - a.requests || a.status - b.status,
+    ),
+    hosts,
+  };
+}
+
+const SPANS: Record<Range, number> = {
+  "24h": DAY,
+  "7d": 7 * DAY,
+  "30d": 30 * DAY,
+};
+
+/** Totals and per-host rows of rollup rows. */
+function summarize(rows: (typeof trafficHourly.$inferSelect)[]): {
+  totals: MetricsTotals;
+  hosts: HostRow[];
+} {
+  const totals: MetricsTotals = {
+    requests: 0,
+    bytes: 0,
+    avgMs: null,
+    maxMs: null,
+    byClass: { "2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0 },
+  };
+  let durationSum = 0;
+  const hosts = new Map<string, HostRow & { durationSum: number }>();
+  for (const row of rows) {
+    totals.requests += row.requests;
+    totals.bytes += row.bytesOut;
+    durationSum += row.durationMsSum;
+    totals.maxMs = Math.max(totals.maxMs ?? 0, row.durationMsMax);
+    const statusClass = classOf(row.status);
+    if (statusClass) totals.byClass[statusClass] += row.requests;
     const entry = hosts.get(row.host) ?? {
       host: row.host,
       requests: 0,
@@ -129,19 +172,13 @@ export function loadMetrics(
     };
     entry.requests += row.requests;
     entry.bytes += row.bytesOut;
-    entry.errors += errors;
+    entry.errors += row.status >= 500 ? row.requests : 0;
     entry.durationSum += row.durationMsSum;
     hosts.set(row.host, entry);
   }
   if (totals.requests > 0) totals.avgMs = durationSum / totals.requests;
-
   return {
-    range,
     totals,
-    series: points,
-    codes: [...codes.values()].sort(
-      (a, b) => b.requests - a.requests || a.status - b.status,
-    ),
     hosts: [...hosts.values()]
       .map(({ durationSum: sum, ...row }) => ({
         ...row,

@@ -85,6 +85,14 @@ export function formatMs(value: number | null, locale: Locale): string {
   return `${numberFormat(locale, { maximumFractionDigits: value < 10 ? 1 : 0 }).format(value)} ms`;
 }
 
+/** Signed relative change: `+30 %`, `−4,5 %`, `±0 %` (one decimal below 10 %). */
+export function formatChange(ratio: number, locale: Locale): string {
+  const value = ratio * 100;
+  if (Math.abs(value) < 0.05) return "±0 %";
+  const digits = Math.abs(value) < 10 ? 1 : 0;
+  return `${numberFormat(locale, { maximumFractionDigits: digits, signDisplay: "always" }).format(value)} %`;
+}
+
 export function formatPercent(
   part: number,
   total: number,

@@ -73,6 +73,9 @@ export function SyncStatusPanel({
     case "other-instance":
       detail = d.otherInstance;
       break;
+    case "lock-unavailable":
+      detail = d.lockUnavailable;
+      break;
     case "not-configured":
       detail = d.notConfigured;
       break;
