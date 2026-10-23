@@ -64,7 +64,20 @@ import /config/manager/sites.caddy
 sudo setfacl -m u:1000:rw /path/to/Caddyfile && docker restart caddy
 ```
 
-**2. Configure.** Download two files and fill in `.env`:
+**2. Enable the access log** (optional, for metrics and logs). Add `import access_log` to each
+site in your Caddyfile:
+
+```caddyfile
+example.com {
+	import access_log
+	reverse_proxy app:8080
+}
+```
+
+Restart Caddy afterwards, or do this step later in Caddy Visualizer under Caddy Config, which
+adds the line to the selected sites. Sites you create in Caddy Visualizer get it automatically.
+
+**3. Configure.** Download two files and fill in `.env`:
 
 ```sh
 mkdir caddy-visualizer && cd caddy-visualizer
@@ -72,7 +85,7 @@ curl -fsSLO https://raw.githubusercontent.com/dree007/caddy-visualizer/main/dock
 curl -fsSL https://raw.githubusercontent.com/dree007/caddy-visualizer/main/.env.example -o .env
 ```
 
-**3. Start.**
+**4. Start.**
 
 ```sh
 docker compose up -d
