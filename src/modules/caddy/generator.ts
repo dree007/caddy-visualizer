@@ -151,10 +151,27 @@ function basicAuth(site: SiteConfig): CaddyDirective[] {
   ];
 }
 
+/**
+ * An `https://` upstream already makes Caddy use TLS; skipping the check only
+ * needs `tls_insecure_skip_verify` in the HTTP transport.
+ */
 function reverseProxy(site: SiteConfig): CaddyDirective {
   return {
     name: caddyToken("reverse_proxy"),
     args: [caddyToken(site.upstream ?? "")],
+    ...(site.upstreamSkipTlsVerify
+      ? {
+          block: [
+            {
+              name: caddyToken("transport"),
+              args: [caddyToken("http")],
+              block: [
+                { name: caddyToken("tls_insecure_skip_verify"), args: [] },
+              ],
+            },
+          ],
+        }
+      : {}),
   };
 }
 

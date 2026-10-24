@@ -363,6 +363,7 @@ export const de: Messages = {
       target: "Ziel",
       tls: "TLS",
       basicAuth: "Basic Auth",
+      skipTlsVerify: "Zertifikat ungeprüft",
       redirect: (code) => `Redirect ${code}`,
       redirectTo: "Weiterleitung nach",
       changed: "Geändert",
@@ -402,6 +403,9 @@ export const de: Messages = {
       hostnameHint: "Die Adresse der Site, ohne http:// und ohne Pfad.",
       upstreamHint:
         "Ziel, an das Caddy die Anfragen weiterleitet: http:// oder https://, Host oder IP und optional ein Port.",
+      skipTlsVerify: "Zertifikat des Upstreams nicht prüfen",
+      skipTlsVerifyHint:
+        "Für interne HTTPS-Ziele mit selbstsigniertem Zertifikat. Die Verbindung bleibt verschlüsselt, Caddy akzeptiert aber jedes Zertifikat (tls_insecure_skip_verify).",
       enabled: "Aktiviert",
       enabledHint:
         "Deaktivierte Sites bleiben gespeichert, erscheinen aber nicht in der generierten Konfiguration.",
@@ -555,6 +559,8 @@ export const de: Messages = {
     "upstream.host":
       "Bitte gib einen gültigen Upstream-Host an (Hostname, IPv4- oder IPv6-Adresse).",
     "upstream.port": "Der Port muss eine Zahl zwischen 1 und 65535 sein.",
+    "upstream.skipVerifyNeedsHttps":
+      "Die Zertifikatsprüfung lässt sich nur bei einem https://-Upstream abschalten.",
     "site.duplicate": "Für diesen Hostnamen existiert bereits eine Site.",
     "accessLog.snippetMissing":
       "Die Caddyfile definiert den Baustein (access_log) nicht; es wurde nichts geändert.",

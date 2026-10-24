@@ -30,6 +30,7 @@ export default async function EditSitePage({
         hostname: site.hostname,
         kind: site.kind,
         upstream: site.upstream ?? "",
+        upstreamSkipTlsVerify: site.upstreamSkipTlsVerify,
         redirectTarget: site.redirectTarget ?? "",
         redirectCode: String(site.redirectCode ?? 308),
         tls: site.tls,

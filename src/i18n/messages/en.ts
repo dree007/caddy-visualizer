@@ -358,6 +358,7 @@ export const en = {
       target: "Target",
       tls: "TLS",
       basicAuth: "Basic auth",
+      skipTlsVerify: "Certificate not verified",
       redirect: (code: number) => `Redirect ${code}`,
       redirectTo: "Redirect to",
       changed: "Changed",
@@ -398,6 +399,9 @@ export const en = {
         "The address of the site, without http:// and without a path.",
       upstreamHint:
         "Where Caddy forwards requests: http:// or https://, host or IP and an optional port.",
+      skipTlsVerify: "Don't verify the upstream's certificate",
+      skipTlsVerifyHint:
+        "For internal HTTPS upstreams with a self-signed certificate. The connection stays encrypted, but Caddy accepts any certificate (tls_insecure_skip_verify).",
       enabled: "Enabled",
       enabledHint:
         "Disabled sites stay stored but are left out of the generated configuration.",
@@ -541,6 +545,8 @@ export const en = {
     "upstream.host":
       "Please enter a valid upstream host (hostname, IPv4 or IPv6 address).",
     "upstream.port": "The port must be a number between 1 and 65535.",
+    "upstream.skipVerifyNeedsHttps":
+      "Skipping the certificate check needs an https:// upstream.",
     "site.duplicate": "A site with this hostname already exists.",
     "accessLog.snippetMissing":
       "The Caddyfile does not define the (access_log) snippet; nothing was changed.",

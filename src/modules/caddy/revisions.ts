@@ -21,6 +21,8 @@ export interface SiteSnapshot {
   /** Missing in snapshots from before redirects (= proxy). */
   kind?: string;
   upstream: string | null;
+  /** Missing in snapshots from before this option (= off). */
+  upstreamSkipTlsVerify?: boolean;
   redirectTarget?: string | null;
   redirectCode?: number | null;
   tls: string;
@@ -39,6 +41,7 @@ export function snapshotOf(sites: readonly ManagedSite[]): SiteSnapshot[] {
     hostname: site.hostname,
     kind: site.kind,
     upstream: site.upstream,
+    upstreamSkipTlsVerify: site.upstreamSkipTlsVerify,
     redirectTarget: site.redirectTarget,
     redirectCode: site.redirectCode,
     tls: site.tls,

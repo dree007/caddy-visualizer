@@ -8,6 +8,7 @@ import {
   Lock,
   LockOpen,
   Pencil,
+  ShieldOff,
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
@@ -52,7 +53,7 @@ export interface SiteListItem {
   hostname: string;
   /** Upstream of a proxy, or target and status code of a redirect. */
   target:
-    | { kind: "proxy"; url: string }
+    | { kind: "proxy"; url: string; skipTlsVerify: boolean }
     | { kind: "redirect"; url: string; code: number };
   tls: TlsMode;
   /** Protected by basic auth (never the credentials themselves). */
@@ -163,6 +164,12 @@ function SiteRow({
         {site.target.kind === "redirect" ? (
           <Badge variant="outline" className="text-muted-foreground">
             {l.redirect(site.target.code)}
+          </Badge>
+        ) : null}
+        {site.target.kind === "proxy" && site.target.skipTlsVerify ? (
+          <Badge variant="outline" className="text-muted-foreground">
+            <ShieldOff aria-hidden data-icon="inline-start" />
+            {l.skipTlsVerify}
           </Badge>
         ) : null}
         {site.basicAuth ? (

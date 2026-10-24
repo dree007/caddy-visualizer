@@ -64,6 +64,13 @@
       "when": 1792663332070,
       "tag": "0008_redirect_sites",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792758236947,
+      "tag": "0009_upstream_skip_tls_verify",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ export interface SiteFormValues {
   hostname: string;
   kind: SiteKind | string;
   upstream: string;
+  upstreamSkipTlsVerify: boolean;
   redirectTarget: string;
   redirectCode: string;
   tls: TlsMode | string;
@@ -42,6 +43,7 @@ export const emptySiteFormValues: SiteFormValues = {
   hostname: "",
   kind: "proxy",
   upstream: "",
+  upstreamSkipTlsVerify: false,
   redirectTarget: "",
   redirectCode: "308",
   tls: "automatic",
@@ -69,6 +71,7 @@ export function siteFormValues(formData: FormData): SiteFormValues {
     hostname: text(formData, "hostname"),
     kind: text(formData, "kind") || "proxy",
     upstream: text(formData, "upstream"),
+    upstreamSkipTlsVerify: formData.get("upstreamSkipTlsVerify") === "on",
     redirectTarget: text(formData, "redirectTarget"),
     redirectCode: text(formData, "redirectCode"),
     tls: text(formData, "tls"),

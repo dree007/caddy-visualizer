@@ -20,22 +20,22 @@ const TONES = {
   neutral: "text-muted-foreground",
 } as const;
 
-/** Arrow and signed percentage against the previous period; nothing without one. */
+/**
+ * Arrow and signed percentage against the previous period; nothing without one.
+ * The period is only a tooltip and for screen readers.
+ */
 export function TrendBadge({
   trend,
   polarity,
   range,
   locale,
   t,
-  showPeriod = false,
 }: {
   trend: Trend;
   polarity: Polarity;
   range: Range;
   locale: Locale;
   t: Messages;
-  /** Writes "vs. previous 24 h" next to it (otherwise only for screen readers). */
-  showPeriod?: boolean;
 }) {
   if (trend.kind === "none") return null;
   const direction =
@@ -63,16 +63,13 @@ export function TrendBadge({
   const period = t.metrics.trend.versus[range];
 
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-1 text-xs tabular-nums">
-      <span
-        className={`inline-flex items-center gap-0.5 font-medium whitespace-nowrap ${TONES[tone]}`}
-      >
-        <Icon aria-hidden className="size-3.5" strokeWidth={2} />
-        {text}
-      </span>
-      <span className={showPeriod ? "text-muted-foreground" : "sr-only"}>
-        {period}
-      </span>
+    <span
+      title={period}
+      className={`inline-flex items-center gap-0.5 text-xs font-medium whitespace-nowrap tabular-nums ${TONES[tone]}`}
+    >
+      <Icon aria-hidden className="size-3.5" strokeWidth={2} />
+      {text}
+      <span className="sr-only"> {period}</span>
     </span>
   );
 }

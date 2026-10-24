@@ -17,6 +17,7 @@ const snapshotSchema = z.array(
     hostname: z.string(),
     kind: z.string().optional(),
     upstream: z.string().nullable(),
+    upstreamSkipTlsVerify: z.boolean().optional(),
     redirectTarget: z.string().nullable().optional(),
     redirectCode: z.number().nullable().optional(),
     tls: z.string(),

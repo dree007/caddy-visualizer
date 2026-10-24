@@ -24,6 +24,12 @@ export const caddySites = sqliteTable(
     kind: text("kind", { enum: SITE_KINDS }).notNull().default("proxy"),
     /** Canonical reverse-proxy upstream `http(s)://host[:port]`; proxies only. */
     upstream: text("upstream"),
+    /** Accept any certificate of an `https://` upstream (e.g. self-signed). */
+    upstreamSkipTlsVerify: integer("upstream_skip_tls_verify", {
+      mode: "boolean",
+    })
+      .notNull()
+      .default(false),
     /** Target URL of a redirect site (may contain placeholders such as `{uri}`). */
     redirectTarget: text("redirect_target"),
     /** 301, 302, 307 or 308. */
@@ -43,6 +49,10 @@ export const caddySites = sqliteTable(
     check(
       "caddy_sites_kind_check",
       sql`(${table.kind} = 'proxy' and ${table.upstream} is not null and ${table.redirectTarget} is null and ${table.redirectCode} is null) or (${table.kind} = 'redirect' and ${table.upstream} is null and ${table.redirectTarget} is not null and ${table.redirectCode} in (301, 302, 307, 308) and ${table.basicAuthHash} is null)`,
+    ),
+    check(
+      "caddy_sites_upstream_skip_tls_verify_check",
+      sql`${table.upstreamSkipTlsVerify} = 0 or (${table.kind} = 'proxy' and ${table.upstream} like 'https://%')`,
     ),
     check(
       "caddy_sites_basic_auth_check",

@@ -82,7 +82,6 @@ export async function StatTiles({
               range={range}
               locale={locale}
               t={t}
-              showPeriod
             />
             {tile.detail ? <span>{tile.detail}</span> : null}
           </dd>

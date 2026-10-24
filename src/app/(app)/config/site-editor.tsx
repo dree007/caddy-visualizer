@@ -59,6 +59,7 @@ const FIELD_ORDER: SiteField[] = [
   "hostname",
   "kind",
   "upstream",
+  "upstreamSkipTlsVerify",
   "redirectTarget",
   "redirectCode",
   "tls",
@@ -110,6 +111,16 @@ export function SiteEditor({
   const [kindChoice, setKindChoice] = useState({ attempt: -1, kind: "" });
   const kind =
     kindChoice.attempt === state.attempt ? kindChoice.kind : state.values.kind;
+  const [upstreamInput, setUpstreamInput] = useState({
+    attempt: -1,
+    upstream: "",
+  });
+  const upstream =
+    upstreamInput.attempt === state.attempt
+      ? upstreamInput.upstream
+      : state.values.upstream;
+  // Only offered for https:// upstreams; a hidden switch submits "off".
+  const httpsUpstream = /^\s*https:\/\//i.test(upstream);
   const { t } = useI18n();
   const e = t.config.editor;
 
@@ -324,11 +335,56 @@ export function SiteEditor({
                 aria-invalid={upstreamError ? true : undefined}
                 aria-describedby={describedBy("upstream", upstreamError)}
                 onBlur={(event) => onBlur("upstream", event.currentTarget)}
-                onChange={(event) => onChange("upstream", event.currentTarget)}
+                onChange={(event) => {
+                  setUpstreamInput({
+                    attempt: state.attempt,
+                    upstream: event.currentTarget.value,
+                  });
+                  onChange("upstream", event.currentTarget);
+                }}
                 className="h-11 font-mono md:h-9"
               />
             </Field>
           )}
+
+          {kind !== "redirect" && httpsUpstream ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-4 rounded-2xl bg-band p-4">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="upstreamSkipTlsVerify">
+                    {e.skipTlsVerify}
+                  </Label>
+                  <p
+                    id="upstreamSkipTlsVerify-hint"
+                    className="text-xs text-muted-foreground"
+                  >
+                    {e.skipTlsVerifyHint}
+                  </p>
+                </div>
+                <Switch
+                  id="upstreamSkipTlsVerify"
+                  name="upstreamSkipTlsVerify"
+                  data-field="upstreamSkipTlsVerify"
+                  defaultChecked={values.upstreamSkipTlsVerify}
+                  aria-invalid={
+                    errorFor("upstreamSkipTlsVerify") ? true : undefined
+                  }
+                  aria-describedby={describedBy(
+                    "upstreamSkipTlsVerify",
+                    errorFor("upstreamSkipTlsVerify"),
+                  )}
+                  onCheckedChange={() =>
+                    setClientError("upstreamSkipTlsVerify", null)
+                  }
+                  className="mt-0.5"
+                />
+              </div>
+              <FieldError
+                id="upstreamSkipTlsVerify-error"
+                error={shown(errorFor("upstreamSkipTlsVerify"))}
+              />
+            </div>
+          ) : null}
 
           <ChoiceGroup
             name="tls"

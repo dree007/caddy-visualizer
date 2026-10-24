@@ -1,6 +1,6 @@
 {
   "name": "caddy-visualizer",
-  "version": "1.3.2",
+  "version": "1.4.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -25,7 +25,7 @@
     "react-dom": "19.2.8",
     "server-only": "0.0.1",
     "tw-animate-css": "1.4.0",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",

@@ -77,7 +77,11 @@ export default async function ConfigPage({
             url: site.redirectTarget ?? "",
             code: site.redirectCode ?? 0,
           }
-        : { kind: "proxy", url: site.upstream ?? "" },
+        : {
+            kind: "proxy",
+            url: site.upstream ?? "",
+            skipTlsVerify: site.upstreamSkipTlsVerify,
+          },
     tls: site.tls,
     basicAuth: site.basicAuthHash !== null,
     enabled: site.enabled,

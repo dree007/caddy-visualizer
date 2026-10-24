@@ -53,6 +53,9 @@ export const siteInputSchema = z.object({
   ...siteFields,
   /** Checked per kind in `validateSiteInput`. */
   upstream: z.unknown().optional(),
+  upstreamSkipTlsVerify: z
+    .boolean({ error: code("validation.invalid") })
+    .default(false),
   redirectTarget: z.string({ error: code("validation.invalid") }).default(""),
   redirectCode: z
     .union([z.string(), z.number()], { error: code("redirect.code") })
@@ -77,6 +80,8 @@ export interface ValidSiteInput {
   kind: SiteKind;
   /** Set for proxies only. */
   upstream: string | null;
+  /** Proxies to an `https://` upstream only. */
+  upstreamSkipTlsVerify: boolean;
   /** Set for redirects only. */
   redirect: { target: string; code: RedirectCode } | null;
   /** `password: null` keeps the stored hash. */
@@ -127,6 +132,17 @@ export function validateSiteInput(
     if (parsedUpstream.success) upstream = parsedUpstream.data;
     else fieldErrors.upstream ??= parsedUpstream.error.issues[0]!.message;
   }
+  const upstreamSkipTlsVerify =
+    result.success &&
+    kind.data === "proxy" &&
+    result.data.upstreamSkipTlsVerify;
+  if (
+    upstreamSkipTlsVerify &&
+    upstream !== null &&
+    !upstream.startsWith("https://")
+  ) {
+    fieldErrors.upstreamSkipTlsVerify ??= code("upstream.skipVerifyNeedsHttps");
+  }
   if (kind.success && kind.data === "redirect" && result.success) {
     const target = parseRedirectTarget(result.data.redirectTarget);
     const status = parseRedirectCode(result.data.redirectCode);
@@ -169,7 +185,16 @@ export function validateSiteInput(
     const { hostname, tls, enabled, kind } = result.data;
     return {
       ok: true,
-      value: { hostname, tls, enabled, kind, upstream, redirect, basicAuth },
+      value: {
+        hostname,
+        tls,
+        enabled,
+        kind,
+        upstream,
+        upstreamSkipTlsVerify,
+        redirect,
+        basicAuth,
+      },
     };
   }
   // Defensive: a non-object input has no field path.
@@ -188,6 +213,7 @@ export const siteConfigSchema = z
   .object({
     ...siteFields,
     upstream: upstreamField.nullable().default(null),
+    upstreamSkipTlsVerify: z.boolean().default(false),
     redirectTarget: domainString(parseRedirectTarget).nullable().default(null),
     redirectCode: z
       .number()
@@ -207,6 +233,12 @@ export const siteConfigSchema = z
   .refine((site) => site.basicAuthHash === null || site.tls !== "off", {
     path: ["tls"],
   })
+  .refine(
+    (site) =>
+      !site.upstreamSkipTlsVerify ||
+      (site.kind === "proxy" && site.upstream?.startsWith("https://")),
+    { path: ["upstreamSkipTlsVerify"] },
+  )
   .refine(
     (site) =>
       site.kind === "proxy"

@@ -34,7 +34,11 @@ export async function StatusCodes({
   const count = (n: number) => formatCount(n, locale);
   const total = metrics.totals.requests;
   const peak = (values: number[]) => Math.max(0, ...values);
-  const cards = metrics.codes.slice(0, CARD_LIMIT);
+  // The most frequent codes as cards; cards and table in ascending order.
+  const byCode = (a: { status: number }, b: { status: number }) =>
+    a.status - b.status;
+  const cards = metrics.codes.slice(0, CARD_LIMIT).sort(byCode);
+  const codes = [...metrics.codes].sort(byCode);
   const hidden = metrics.codes.length - cards.length;
 
   return (
@@ -180,7 +184,7 @@ export async function StatusCodes({
                   </tr>
                 </thead>
                 <tbody>
-                  {metrics.codes.map((code) => (
+                  {codes.map((code) => (
                     <tr key={code.status} className="border-t">
                       <td className="py-1.5 pr-4 font-mono">{code.status}</td>
                       <td className="py-1.5 pr-4">
