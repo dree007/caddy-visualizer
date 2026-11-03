@@ -33,6 +33,11 @@ export const en = {
       short: "Config",
       intro: "Your Caddyfile and form sites, applied together.",
     },
+    certificates: {
+      label: "Certificates",
+      short: "Certs",
+      intro: "TLS certificates your sites deliver over HTTPS.",
+    },
     settings: {
       label: "Settings",
       short: "Settings",
@@ -90,6 +95,73 @@ export const en = {
     noTrafficText:
       "As soon as Caddy's access log is read, requests, traffic and status codes appear here.",
     requestsPerHour: "Requests per hour",
+    certificatesHeading: "Certificates",
+    allCertificates: "All certificates",
+  },
+  certificates: {
+    title: "Certificates",
+    summary: {
+      valid: "Valid",
+      expiring: "Expiring soon",
+      problems: "Expired or faulty",
+    },
+    statuses: {
+      valid: "Valid",
+      expiring: "Expiring soon",
+      expired: "Expired",
+      invalid: "Invalid",
+      unreachable: "Unreachable",
+      "not-checked": "Not checked",
+      "not-applicable": "Not applicable",
+    },
+    reasons: {
+      wildcard:
+        "Wildcard entry: not a host name that can be connected to. Concrete host names of this domain are checked on their own.",
+      ip: "IP address: certificates are checked for host names only.",
+      "not-a-hostname": "Not a complete DNS host name (e.g. localhost).",
+      http: "Served over plain HTTP only.",
+      blocked: "Not checked because of its address.",
+    },
+    checkNow: "Check now",
+    checking: "Checking …",
+    lastRun: (time: string) => `Last check ${time}`,
+    neverRun: "Not checked yet",
+    runningNote: "A check is running; results appear when it is done.",
+    observedNote:
+      "Shows the certificate each endpoint delivers on port 443, seen from this server. It need not be the one the local Caddy manages, e.g. behind another proxy or with split DNS.",
+    caddyUnreachable: "Showing the last stored results.",
+    emptyTitle: "No host names to check",
+    emptyText:
+      "As soon as Caddy serves sites over HTTPS, their certificates appear here.",
+    listLabel: "Host names and their certificates",
+    details: (host: string) => `Details for ${host}`,
+    daysLeft: (n: number) =>
+      n < 0
+        ? `expired ${plural(-n, "day", "days")} ago`
+        : n === 0
+          ? "expires today"
+          : `${plural(n, "day", "days")} left`,
+    fields: {
+      status: "Status",
+      issuer: "Issuer",
+      subject: "Subject",
+      validFrom: "Valid from",
+      validTo: "Valid until",
+      daysLeft: "Remaining",
+      sans: "Alternative names (SANs)",
+      address: "Checked address",
+      fingerprint: "SHA-256 fingerprint",
+      lastSuccess: "Last successful check",
+      lastAttempt: "Last attempt",
+      problem: "Problem",
+    },
+    never: "Never",
+    loading: "Loading certificates …",
+    errorTitle: "Certificates could not be loaded",
+    errorText:
+      "The stored results are not available right now. Details are in the server log.",
+    privateHelp:
+      "Internal sites (split DNS, private addresses) are checked only for domains listed in CERT_CHECK_PRIVATE_DOMAINS.",
   },
   runningSites: {
     https: "HTTPS",
@@ -634,6 +706,31 @@ export const en = {
     "caddy.invalidResponse": "Caddy returned an unexpected response.",
     "ingestion.gap":
       "A rotated log file was already deleted; entries in between are missing.",
+    "cert.dnsTimeout": "The DNS lookup did not answer in time.",
+    "cert.dnsNotFound": "The host name does not resolve (no DNS record).",
+    "cert.dnsFailed": "The DNS lookup failed.",
+    "cert.addressForbidden": (p: P) =>
+      `Resolves to ${p.address} (loopback, link-local or reserved). Such addresses are never checked.`,
+    "cert.addressPrivate": (p: P) =>
+      `Resolves to the private address ${p.address}. To check internal sites, add their domain to CERT_CHECK_PRIVATE_DOMAINS.`,
+    "cert.timeout": "No TLS answer in time on port 443.",
+    "cert.refused": "Connection to port 443 refused.",
+    "cert.networkUnreachable": "The address is not reachable from this server.",
+    "cert.connectFailed": (p: P) => `Connection failed (${p.detail}).`,
+    "cert.handshakeFailed": (p: P) =>
+      `TLS handshake failed (${p.detail}). Often the server has no certificate for this name yet.`,
+    "cert.noCertificate": "The server sent no certificate.",
+    "cert.expired": "The certificate has expired.",
+    "cert.notYetValid": "The certificate is not valid yet.",
+    "cert.hostname": (p: P) =>
+      `The certificate does not cover the host name ${p.hostname}.`,
+    "cert.untrusted": (p: P) =>
+      `The certificate chain is not trusted (${p.detail}), e.g. a self-signed or internal CA certificate.`,
+    "cert.rejected": (p: P) => `The certificate was rejected (${p.detail}).`,
+    "cert.checkFailed": "The check failed unexpectedly.",
+    "cert.runDone": (p: P) =>
+      `${plural(Number(p.n), "host name", "host names")} checked.`,
+    "cert.runRecent": "Just checked; showing that result.",
   },
 };
 

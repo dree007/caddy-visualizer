@@ -26,6 +26,11 @@ export function TopNav({ className }: { className?: string }) {
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
+                title={
+                  item.placement === "secondary"
+                    ? t.nav[item.key].label
+                    : undefined
+                }
                 className={cn(
                   "flex h-9 items-center gap-2 rounded-full px-3.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-[color,background-color,box-shadow] duration-200 lg:px-4",
                   "outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
@@ -37,7 +42,14 @@ export function TopNav({ className }: { className?: string }) {
                   strokeWidth={1.5}
                   aria-hidden
                 />
-                <span className="lg:hidden">{t.nav[item.key].short}</span>
+                {/* Below `lg`, secondary sections show only their icon so all fit. */}
+                <span
+                  className={
+                    item.placement === "secondary" ? "sr-only" : "lg:hidden"
+                  }
+                >
+                  {t.nav[item.key].short}
+                </span>
                 <span className="hidden lg:inline">
                   {t.nav[item.key].label}
                 </span>

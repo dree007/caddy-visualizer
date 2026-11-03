@@ -107,6 +107,10 @@ docker compose pull && docker compose up -d
   `false`.
 - Settings shows _No read permission_ for the access log? Caddy created the file before
   `mode 644` was set: `docker exec caddy chmod 644 /config/logs/access.log`
+- Certificates shows _Not applicable_ for an internal site? Its name resolves to a private
+  address, which is only checked for domains listed in `CERT_CHECK_PRIVATE_DOMAINS`
+  (e.g. `home.example.com,lan`). Certificates of an internal CA (`tls internal`) show as
+  _Invalid_ unless that CA is added with `NODE_EXTRA_CA_CERTS`.
 - Forgot the password? Set a new `ADMIN_INITIAL_PASSWORD` plus `ADMIN_RESET_PASSWORD=true`,
   run `docker compose up -d`, then remove both lines.
 

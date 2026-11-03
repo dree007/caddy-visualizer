@@ -32,6 +32,11 @@ export const de: Messages = {
       short: "Config",
       intro: "Deine Caddyfile und die Formular-Sites, gemeinsam angewendet.",
     },
+    certificates: {
+      label: "Zertifikate",
+      short: "Zertifikate",
+      intro: "TLS-Zertifikate, die deine Sites über HTTPS ausliefern.",
+    },
     settings: {
       label: "Settings",
       short: "Settings",
@@ -92,6 +97,73 @@ export const de: Messages = {
     noTrafficText:
       "Sobald Caddys Access Log eingelesen wird, siehst du hier Requests, Traffic und Statuscodes.",
     requestsPerHour: "Requests pro Stunde",
+    certificatesHeading: "Zertifikate",
+    allCertificates: "Alle Zertifikate",
+  },
+  certificates: {
+    title: "Zertifikate",
+    summary: {
+      valid: "Gültig",
+      expiring: "Laufen bald ab",
+      problems: "Abgelaufen oder fehlerhaft",
+    },
+    statuses: {
+      valid: "Gültig",
+      expiring: "Läuft bald ab",
+      expired: "Abgelaufen",
+      invalid: "Ungültig",
+      unreachable: "Nicht erreichbar",
+      "not-checked": "Nicht geprüft",
+      "not-applicable": "Nicht anwendbar",
+    },
+    reasons: {
+      wildcard:
+        "Wildcard-Eintrag: kein Hostname, zu dem sich verbinden lässt. Konkrete Hostnamen dieser Domain werden einzeln geprüft.",
+      ip: "IP-Adresse: Zertifikate werden nur für Hostnamen geprüft.",
+      "not-a-hostname": "Kein vollständiger DNS-Hostname (z. B. localhost).",
+      http: "Wird nur über einfaches HTTP ausgeliefert.",
+      blocked: "Wegen seiner Adresse nicht geprüft.",
+    },
+    checkNow: "Jetzt prüfen",
+    checking: "Prüfe …",
+    lastRun: (time: string) => `Zuletzt geprüft ${time}`,
+    neverRun: "Noch nicht geprüft",
+    runningNote: "Eine Prüfung läuft; die Ergebnisse erscheinen danach.",
+    observedNote:
+      "Zeigt das Zertifikat, das der jeweilige Endpunkt auf Port 443 ausliefert, von diesem Server aus gesehen. Es muss nicht das sein, das der lokale Caddy verwaltet, z. B. hinter einem anderen Proxy oder bei Split-DNS.",
+    caddyUnreachable: "Angezeigt werden die zuletzt gespeicherten Ergebnisse.",
+    emptyTitle: "Keine Hostnamen zu prüfen",
+    emptyText:
+      "Sobald Caddy Sites über HTTPS ausliefert, erscheinen ihre Zertifikate hier.",
+    listLabel: "Hostnamen und ihre Zertifikate",
+    details: (host: string) => `Details zu ${host}`,
+    daysLeft: (n: number) =>
+      n < 0
+        ? `seit ${plural(-n, "Tag", "Tagen")} abgelaufen`
+        : n === 0
+          ? "läuft heute ab"
+          : `noch ${plural(n, "Tag", "Tage")}`,
+    fields: {
+      status: "Status",
+      issuer: "Aussteller",
+      subject: "Inhaber",
+      validFrom: "Gültig ab",
+      validTo: "Gültig bis",
+      daysLeft: "Verbleibend",
+      sans: "Alternative Namen (SANs)",
+      address: "Geprüfte Adresse",
+      fingerprint: "SHA-256-Fingerabdruck",
+      lastSuccess: "Letzte erfolgreiche Prüfung",
+      lastAttempt: "Letzter Prüfversuch",
+      problem: "Problem",
+    },
+    never: "Nie",
+    loading: "Zertifikate werden geladen …",
+    errorTitle: "Zertifikate konnten nicht geladen werden",
+    errorText:
+      "Die gespeicherten Ergebnisse sind gerade nicht verfügbar. Details stehen im Server-Log.",
+    privateHelp:
+      "Interne Sites (Split-DNS, private Adressen) werden nur für Domains geprüft, die in CERT_CHECK_PRIVATE_DOMAINS stehen.",
   },
   runningSites: {
     https: "HTTPS",
@@ -650,5 +722,32 @@ export const de: Messages = {
     "caddy.invalidResponse": "Caddy hat eine unerwartete Antwort geliefert.",
     "ingestion.gap":
       "Eine rotierte Logdatei war schon gelöscht; dazwischen fehlen Einträge.",
+    "cert.dnsTimeout": "Die DNS-Abfrage hat nicht rechtzeitig geantwortet.",
+    "cert.dnsNotFound":
+      "Der Hostname lässt sich nicht auflösen (kein DNS-Eintrag).",
+    "cert.dnsFailed": "Die DNS-Abfrage ist fehlgeschlagen.",
+    "cert.addressForbidden": (p: P) =>
+      `Löst auf ${p.address} auf (Loopback, Link-Local oder reserviert). Solche Adressen werden nie geprüft.`,
+    "cert.addressPrivate": (p: P) =>
+      `Löst auf die private Adresse ${p.address} auf. Für interne Sites ihre Domain in CERT_CHECK_PRIVATE_DOMAINS eintragen.`,
+    "cert.timeout": "Keine rechtzeitige TLS-Antwort auf Port 443.",
+    "cert.refused": "Verbindung zu Port 443 abgelehnt.",
+    "cert.networkUnreachable":
+      "Die Adresse ist von diesem Server aus nicht erreichbar.",
+    "cert.connectFailed": (p: P) => `Verbindung fehlgeschlagen (${p.detail}).`,
+    "cert.handshakeFailed": (p: P) =>
+      `TLS-Handshake fehlgeschlagen (${p.detail}). Oft hat der Server für diesen Namen noch kein Zertifikat.`,
+    "cert.noCertificate": "Der Server hat kein Zertifikat gesendet.",
+    "cert.expired": "Das Zertifikat ist abgelaufen.",
+    "cert.notYetValid": "Das Zertifikat ist noch nicht gültig.",
+    "cert.hostname": (p: P) =>
+      `Das Zertifikat deckt den Hostnamen ${p.hostname} nicht ab.`,
+    "cert.untrusted": (p: P) =>
+      `Der Zertifikatskette wird nicht vertraut (${p.detail}), z. B. selbst signiert oder von einer internen CA.`,
+    "cert.rejected": (p: P) => `Das Zertifikat wurde abgelehnt (${p.detail}).`,
+    "cert.checkFailed": "Die Prüfung ist unerwartet fehlgeschlagen.",
+    "cert.runDone": (p: P) =>
+      `${plural(Number(p.n), "Hostname", "Hostnamen")} geprüft.`,
+    "cert.runRecent": "Gerade erst geprüft; das Ergebnis wird angezeigt.",
   },
 };

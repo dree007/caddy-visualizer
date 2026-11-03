@@ -99,6 +99,11 @@ export type RunningSitesResult =
  */
 export async function loadRunningSites(): Promise<RunningSitesResult> {
   await requireSession();
+  return readRunningSites();
+}
+
+/** `loadRunningSites` without the session check, for background tasks. */
+export async function readRunningSites(): Promise<RunningSitesResult> {
   const client = getCaddyAdminClient();
   if (!client) return { state: "not-configured" };
   let config: unknown;

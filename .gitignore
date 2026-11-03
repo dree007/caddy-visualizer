@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+# Test-only certificates of the certificate checks (see generate.sh).
+!/test/fixtures/tls/*.pem
 
 # debug
 npm-debug.log*

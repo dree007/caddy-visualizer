@@ -4,13 +4,15 @@ import {
   type LucideIcon,
   ScrollText,
   Settings,
+  ShieldCheck,
   Waypoints,
 } from "lucide-react";
 
 export interface NavItem {
   href: string;
   /** Texts in `messages.nav[key]`: label, and a short one for the bottom bar and rail. */
-  key: "dashboard" | "metrics" | "logs" | "config" | "settings";
+  key:
+    "dashboard" | "metrics" | "logs" | "config" | "certificates" | "settings";
   icon: LucideIcon;
   /**
    * `primary` items appear everywhere, including the mobile bottom bar.
@@ -43,6 +45,12 @@ export const navItems: readonly NavItem[] = [
     key: "config",
     icon: Waypoints,
     placement: "primary",
+  },
+  {
+    href: "/certificates",
+    key: "certificates",
+    icon: ShieldCheck,
+    placement: "secondary",
   },
   {
     href: "/settings",

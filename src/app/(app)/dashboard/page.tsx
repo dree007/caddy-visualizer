@@ -7,6 +7,7 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { CertificateSummaryTiles } from "@/components/certificates/certificate-summary";
 import { EmptyState } from "@/components/empty-state";
 import { chartBuckets } from "@/components/metrics/buckets";
 import { RequestsChart } from "@/components/metrics/requests-chart";
@@ -15,7 +16,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { translateCode } from "@/i18n";
 import { getI18n } from "@/i18n/server";
 import { loadTrafficMetrics } from "@/server/access-log/queries";
+import { summarize } from "@/modules/certificates/status";
 import { loadRunningSites } from "@/server/caddy/admin";
+import { loadCertificateOverview } from "@/server/certificates/checks";
 
 import { RunningSites } from "./running-sites";
 
@@ -30,6 +33,11 @@ export default async function DashboardPage() {
     getI18n(),
   ]);
   const d = t.dashboard;
+  // Stored results for the sites just read; no handshake on page view.
+  const certificates =
+    running.state === "ok" && running.sites.length > 0
+      ? await loadCertificateOverview(running.sites)
+      : null;
 
   return (
     <div className="flex flex-col gap-10">
@@ -65,6 +73,31 @@ export default async function DashboardPage() {
           </>
         )}
       </section>
+
+      {certificates && certificates.views.length > 0 ? (
+        <section
+          aria-labelledby="certificates-heading"
+          className="flex flex-col gap-3"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <h2 id="certificates-heading" className="heading text-2xl">
+              {d.certificatesHeading}
+            </h2>
+            <Link
+              href="/certificates"
+              className="inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground hover:text-foreground md:min-h-8"
+            >
+              {d.allCertificates}
+              <ChevronRight aria-hidden className="size-4" />
+            </Link>
+          </div>
+          <CertificateSummaryTiles
+            summary={summarize(certificates.views)}
+            locale={locale}
+            t={t}
+          />
+        </section>
+      ) : null}
 
       <section
         aria-labelledby="running-heading"

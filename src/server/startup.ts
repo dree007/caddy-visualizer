@@ -1,6 +1,7 @@
 import { ensureInitialAdmin } from "@/modules/auth/bootstrap";
 import { deleteExpiredSessions } from "@/modules/auth/sessions";
 import { startIngestion } from "@/server/access-log/ingestion";
+import { startCertificateChecks } from "@/server/certificates/checks";
 import { recoverOnStartup } from "@/server/caddy/engine";
 import { getDb } from "@/server/db";
 import { runMigrations } from "@/server/db/migrate";
@@ -65,6 +66,7 @@ export async function runStartupTasks(
   await recoverOnStartup(log);
 
   startIngestion(log);
+  startCertificateChecks(log);
 }
 
 /** Fail fast: never serve requests with an unmigrated database or invalid configuration. */

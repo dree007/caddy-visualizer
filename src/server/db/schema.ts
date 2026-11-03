@@ -6,3 +6,4 @@
 export * from "../../modules/auth/schema";
 export * from "../../modules/caddy/schema";
 export * from "../../modules/access-log/schema";
+export * from "../../modules/certificates/schema";

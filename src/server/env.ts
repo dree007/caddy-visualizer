@@ -72,6 +72,34 @@ const envSchema = z.object({
   CADDY_MANAGED_DIR: caddyPath("/config/manager"),
   /** Caddy's JSON access log (read-only); source of metrics and logs. */
   CADDY_ACCESS_LOG_FILE: caddyPath("/config/logs/access.log"),
+  /**
+   * Domains whose host names may resolve to private addresses (split DNS,
+   * internal-only sites) for the certificate checks, e.g. `home.example.com,lan`.
+   * A domain also covers its subdomains. Loopback and link-local stay blocked.
+   */
+  CERT_CHECK_PRIVATE_DOMAINS: z.preprocess(
+    emptyToUndefined,
+    z
+      .string()
+      .transform((value) =>
+        value
+          .split(",")
+          .map((domain) => domain.trim().toLowerCase().replace(/\.$/, ""))
+          .filter((domain) => domain !== ""),
+      )
+      .pipe(
+        z.array(
+          z
+            .string()
+            .max(253)
+            .regex(
+              /^(?:(?!-)[a-z0-9-]{1,63}(?<!-)\.)*(?!-)[a-z0-9-]{1,63}(?<!-)$/,
+              "comma-separated domain names without wildcards, e.g. home.example.com,lan",
+            ),
+        ),
+      )
+      .default([]),
+  ),
 });
 
 export type Env = z.infer<typeof envSchema>;

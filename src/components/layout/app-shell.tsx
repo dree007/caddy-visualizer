@@ -13,7 +13,7 @@ import { PageHeader } from "./page-title";
 /**
  * Mobile-first application frame:
  * - a floating pill bar on top (brand, sections from `md`, account)
- * - phones: a floating tab bar at the bottom, settings in the account menu
+ * - phones: a floating tab bar at the bottom, secondary sections in the account menu
  */
 export function AppShell({
   username,
@@ -69,7 +69,8 @@ async function Brand() {
       className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-full pr-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
     >
       <BrandMark />
-      <span className="font-display text-[1.0625rem] font-light tracking-[-0.01em] whitespace-nowrap">
+      {/* Tablets show only the mark, so the section pills fit beside it. */}
+      <span className="font-display text-[1.0625rem] font-light tracking-[-0.01em] whitespace-nowrap md:max-lg:hidden">
         {t.app.name}
       </span>
     </Link>

@@ -71,6 +71,13 @@
       "when": 1792758236947,
       "tag": "0009_upstream_skip_tls_verify",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1793702984602,
+      "tag": "0010_certificate_checks",
+      "breakpoints": true
     }
   ]
 }

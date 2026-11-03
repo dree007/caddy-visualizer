@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Languages,
-  LogOut,
-  Monitor,
-  Moon,
-  Settings,
-  Sun,
-  UserRound,
-} from "lucide-react";
+import { Languages, LogOut, Monitor, Moon, Sun, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useTransition } from "react";
@@ -25,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
+import { secondaryNavItems } from "@/config/navigation";
 import { useI18n } from "@/i18n/client";
 import { LOCALES } from "@/i18n/locales";
 import { logoutAction } from "@/server/auth/actions";
@@ -59,12 +52,14 @@ export function AccountMenu({ username }: { username: string }) {
           <span className="font-medium text-foreground">{username}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {/* Settings has no slot in the phone tab bar, so it lives here on phones. */}
-        <DropdownMenuItem asChild className="md:hidden">
-          <Link href="/settings">
-            <Settings /> {t.nav.settings.label}
-          </Link>
-        </DropdownMenuItem>
+        {/* Secondary sections have no slot in the phone tab bar, so they live here on phones. */}
+        {secondaryNavItems.map((item) => (
+          <DropdownMenuItem key={item.href} asChild className="md:hidden">
+            <Link href={item.href}>
+              <item.icon /> {t.nav[item.key].label}
+            </Link>
+          </DropdownMenuItem>
+        ))}
         <DropdownMenuLabel className="text-xs text-muted-foreground">
           {t.account.appearance}
         </DropdownMenuLabel>
