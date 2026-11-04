@@ -22,6 +22,24 @@
   </tr>
 </table>
 
+## Features
+
+- **Caddyfile editor**: edit the main Caddyfile in the browser. Caddy checks it before anything
+  is saved; you see its message with line numbers and a diff.
+- **Sites by form**: reverse proxies and redirects without writing Caddyfile syntax, with
+  optional basic auth, upstream headers and self-signed HTTPS upstreams.
+- **Safe changes**: every change is checked and applied through Caddy's admin API, recorded as a
+  revision and can be rolled back. Files are only written after Caddy accepted the change.
+- **Dashboard**: all sites Caddy currently runs, from the form or the Caddyfile.
+- **Metrics and logs**: requests, status codes, traffic and response times from Caddy's access
+  log, with trends against the previous period. No IP addresses or query strings are stored.
+- **Certificates**: status and expiry of the TLS certificate of every HTTPS site, with warnings
+  before it expires.
+- **Built-in login** with a single admin account, or login handled by your reverse proxy
+  (Authelia, Authentik, oauth2-proxy).
+- **Small footprint**: one container, SQLite, no Docker socket. English and German, light and
+  dark theme, works on phones.
+
 ## Requirements
 
 Linux on amd64, Docker Engine 26+ with Compose 2.26+, and Caddy 2.8+ in Docker with a named
