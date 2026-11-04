@@ -6,8 +6,10 @@
  * argument is a single `CaddyToken`. A token may only contain characters that
  * the Caddyfile lexer treats as part of one plain word, so a value can never
  * end a line, open or close a block, start a comment, a quoted string, a
- * heredoc, a matcher or a `{placeholder}`. This holds even for values that
- * bypassed domain validation, because the renderer re-checks every token.
+ * heredoc, a matcher or a `{placeholder}`. Exceptions: placeholders from a
+ * fixed list in URLs and free text, and free text as a quoted string with
+ * escaped quotes (`caddyText`, for arguments after the first). This holds even
+ * for values that bypassed domain validation: the renderer re-checks every token.
  */
 
 declare const caddyTokenBrand: unique symbol;
@@ -70,14 +72,83 @@ const URL_TOKEN = new RegExp(
   `^https?://[${URL_CHARS}]*(?:\\{(?:${URL_PLACEHOLDERS.join("|")})\\}[${URL_CHARS}]*)*$`,
 );
 
+/**
+ * Request placeholders allowed in free text (header values), as Caddyfile
+ * shorthands. Deliberately no `{env.*}`, `{file.*}` or `{$VAR}`: those would
+ * read the server's environment or files.
+ */
+export const TEXT_PLACEHOLDERS = [
+  "host",
+  "hostport",
+  "port",
+  "scheme",
+  "uri",
+  "path",
+  "query",
+  "method",
+  "remote",
+  "remote_host",
+  "remote_port",
+  "client_ip",
+  "tls_version",
+  "tls_cipher",
+  "upstream_hostport",
+] as const;
+const PLACEHOLDER = `\\{(?:${TEXT_PLACEHOLDERS.join("|")}|header\\.[A-Za-z0-9-]+)\\}`;
+/** Printable ASCII without `"`, `\`, `{` and `}`. */
+const TEXT_CHAR = "[\\x20\\x21\\x23-\\x5b\\x5d-\\x7a\\x7c\\x7e]";
+/**
+ * Free text for a quoted string: printable ASCII, braces only as an allowed
+ * placeholder, `"` anywhere (escaped when quoted), and `\` only before a
+ * character other than `"` (the lexer keeps such a backslash; before a quote
+ * or at the end it would escape the quote instead).
+ */
+const TEXT = new RegExp(`^(?:${TEXT_CHAR}|"|${PLACEHOLDER}|\\\\(?=[^"]))*$`);
+/**
+ * Text that needs no quotes: placeholders and plain word characters, starting
+ * with a letter, digit or placeholder (never `/`, `-` or `@`).
+ */
+const BARE_TEXT = new RegExp(
+  `^(?:${PLACEHOLDER}|[A-Za-z0-9])(?:${PLACEHOLDER}|[A-Za-z0-9._:/-])*$`,
+);
+
 export function isUrlToken(value: string): boolean {
   return URL_TOKEN.test(value);
+}
+
+/** Whether `caddyText` can emit this value. */
+export function isCaddyText(value: string): boolean {
+  return value !== "" && TEXT.test(value);
+}
+
+function quoted(value: string): string {
+  return `"${value.replaceAll('"', '\\"')}"`;
+}
+
+/** A rendered quoted string whose content is allowed text, quoted canonically. */
+function isQuotedToken(value: string): boolean {
+  if (value.length < 2 || !value.startsWith('"') || !value.endsWith('"')) {
+    return false;
+  }
+  const content = value.slice(1, -1).replaceAll('\\"', '"');
+  return isCaddyText(content) && quoted(content) === value;
 }
 
 export function isCaddyToken(value: string): value is CaddyToken {
   return (
     SAFE_TOKEN.test(value) || BCRYPT_TOKEN.test(value) || URL_TOKEN.test(value)
   );
+}
+
+/**
+ * Free text (e.g. a header value with spaces) as one token: bare when that is
+ * unambiguous, otherwise as a quoted string.
+ */
+export function caddyText(value: string): CaddyToken {
+  if (!isCaddyText(value)) {
+    throw new CaddyfileError("Unsafe Caddyfile text");
+  }
+  return (BARE_TEXT.test(value) ? value : quoted(value)) as CaddyToken;
 }
 
 export function caddyToken(value: string): CaddyToken {
@@ -134,5 +205,6 @@ function renderDirective(directive: CaddyDirective, depth: number): string[] {
 
 /** Branded types only exist at compile time, so every token is re-checked. */
 function checked(token: CaddyToken): string {
+  if (BARE_TEXT.test(token) || isQuotedToken(token)) return token;
   return caddyToken(token);
 }

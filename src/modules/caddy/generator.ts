@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import {
+  caddyText,
   caddyToken,
   type CaddyDirective,
   type CaddyfileDocument,
@@ -153,25 +154,26 @@ function basicAuth(site: SiteConfig): CaddyDirective[] {
 
 /**
  * An `https://` upstream already makes Caddy use TLS; skipping the check only
- * needs `tls_insecure_skip_verify` in the HTTP transport.
+ * needs `tls_insecure_skip_verify` in the HTTP transport. Upstream headers are
+ * `header_up` lines in the same block, in their stored order. Without either,
+ * the one-line form stays.
  */
 function reverseProxy(site: SiteConfig): CaddyDirective {
+  const block: CaddyDirective[] = site.upstreamHeaders.map((header) => ({
+    name: caddyToken("header_up"),
+    args: [caddyText(header.name), caddyText(header.value)],
+  }));
+  if (site.upstreamSkipTlsVerify) {
+    block.push({
+      name: caddyToken("transport"),
+      args: [caddyToken("http")],
+      block: [{ name: caddyToken("tls_insecure_skip_verify"), args: [] }],
+    });
+  }
   return {
     name: caddyToken("reverse_proxy"),
     args: [caddyToken(site.upstream ?? "")],
-    ...(site.upstreamSkipTlsVerify
-      ? {
-          block: [
-            {
-              name: caddyToken("transport"),
-              args: [caddyToken("http")],
-              block: [
-                { name: caddyToken("tls_insecure_skip_verify"), args: [] },
-              ],
-            },
-          ],
-        }
-      : {}),
+    ...(block.length > 0 ? { block } : {}),
   };
 }
 

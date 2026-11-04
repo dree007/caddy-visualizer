@@ -5,6 +5,7 @@ import {
   CornerUpRight,
   CircleAlert,
   KeyRound,
+  ListPlus,
   Lock,
   LockOpen,
   Pencil,
@@ -53,7 +54,7 @@ export interface SiteListItem {
   hostname: string;
   /** Upstream of a proxy, or target and status code of a redirect. */
   target:
-    | { kind: "proxy"; url: string; skipTlsVerify: boolean }
+    | { kind: "proxy"; url: string; skipTlsVerify: boolean; headers: number }
     | { kind: "redirect"; url: string; code: number };
   tls: TlsMode;
   /** Protected by basic auth (never the credentials themselves). */
@@ -170,6 +171,12 @@ function SiteRow({
           <Badge variant="outline" className="text-muted-foreground">
             <ShieldOff aria-hidden data-icon="inline-start" />
             {l.skipTlsVerify}
+          </Badge>
+        ) : null}
+        {site.target.kind === "proxy" && site.target.headers > 0 ? (
+          <Badge variant="outline" className="text-muted-foreground">
+            <ListPlus aria-hidden data-icon="inline-start" />
+            {l.headers(site.target.headers)}
           </Badge>
         ) : null}
         {site.basicAuth ? (

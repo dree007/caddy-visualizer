@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { getI18n } from "@/i18n/server";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 import { createSiteAction } from "@/server/caddy/site-actions";
 import { emptySiteFormValues } from "@/server/caddy/site-form";
 
@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function NewSitePage() {
-  await requireSession();
+  await requireAccess();
   const { t } = await getI18n();
   return (
     <SiteEditor

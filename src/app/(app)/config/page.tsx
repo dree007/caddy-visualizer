@@ -19,7 +19,7 @@ import { definesAccessLogSnippet } from "@/modules/caddy/main-caddyfile";
 import { loadSitesOverview } from "@/modules/caddy/overview";
 import { listRevisions } from "@/modules/caddy/revisions";
 import { loadSyncStatus } from "@/modules/caddy/sync-status";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 import { loadRunningSites } from "@/server/caddy/admin";
 import {
   instanceLockFailure,
@@ -47,7 +47,7 @@ const HISTORY_LENGTH = 10;
 export default async function ConfigPage({
   searchParams,
 }: PageProps<"/config">) {
-  await requireSession();
+  await requireAccess();
   const { locale, t } = await getI18n();
   const c = t.config;
   const db = getDb();
@@ -81,6 +81,7 @@ export default async function ConfigPage({
             kind: "proxy",
             url: site.upstream ?? "",
             skipTlsVerify: site.upstreamSkipTlsVerify,
+            headers: site.upstreamHeaders.length,
           },
     tls: site.tls,
     basicAuth: site.basicAuthHash !== null,

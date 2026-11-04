@@ -9,7 +9,8 @@ import { getEnv, readAdminBootstrapSecrets } from "@/server/env";
 
 /**
  * Runs once per server start (see `src/instrumentation.ts`):
- * validate configuration → apply migrations → ensure the admin account exists.
+ * validate configuration → apply migrations → ensure the admin account exists
+ * (unless the built-in login is disabled).
  */
 export async function runStartupTasks(
   log: Pick<Console, "info" | "warn"> = console,
@@ -26,9 +27,37 @@ export async function runStartupTasks(
   runMigrations(db);
   log.info("[startup] database migrations applied");
 
+  if (env.AUTH_DISABLED) {
+    // No admin account needed; it is created as usual once the login is back on.
+    log.warn(
+      "[startup] AUTH_DISABLED: built-in login off; every request must be authenticated by the reverse proxy and the app must not be reachable otherwise",
+    );
+    if (env.BIND_ADDRESS === undefined) {
+      log.warn(
+        "[startup] AUTH_DISABLED: BIND_ADDRESS is unknown (not started with the release compose file), so published ports cannot be checked",
+      );
+    }
+  } else {
+    await bootstrapAdmin(env.ADMIN_USERNAME!, log);
+  }
+
+  await deleteExpiredSessions(db);
+
+  // Settles revisions left open by a crash; never re-sends /load blindly.
+  await recoverOnStartup(log);
+
+  startIngestion(log);
+  startCertificateChecks(log);
+}
+
+async function bootstrapAdmin(
+  username: string,
+  log: Pick<Console, "info" | "warn">,
+): Promise<void> {
+  const db = getDb();
   const secrets = readAdminBootstrapSecrets(process.env);
   const result = await ensureInitialAdmin(db, {
-    username: env.ADMIN_USERNAME,
+    username,
     ...secrets,
   });
   switch (result.status) {
@@ -59,14 +88,6 @@ export async function runStartupTasks(
       );
       break;
   }
-
-  await deleteExpiredSessions(db);
-
-  // Settles revisions left open by a crash; never re-sends /load blindly.
-  await recoverOnStartup(log);
-
-  startIngestion(log);
-  startCertificateChecks(log);
 }
 
 /** Fail fast: never serve requests with an unmigrated database or invalid configuration. */

@@ -9,7 +9,7 @@ import { configFingerprint } from "@/modules/caddy/config-fingerprint";
 import { type RunningSite, runningSites } from "@/modules/caddy/site-inventory";
 import { listSites } from "@/modules/caddy/sites";
 import { lastAppliedRevision } from "@/modules/caddy/revisions";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 import { getDb } from "@/server/db";
 import { getEnv } from "@/server/env";
 import { code } from "@/i18n/codes";
@@ -59,7 +59,7 @@ export type CaddyRuntimeStatus =
  * server. Requires a session like every other server entry point.
  */
 export async function checkCaddyRuntime(): Promise<CaddyRuntimeStatus> {
-  await requireSession();
+  await requireAccess();
   const client = getCaddyAdminClient();
   if (!client) return { state: "not-configured" };
 
@@ -98,7 +98,7 @@ export type RunningSitesResult =
  * leaves the server, never the config itself (it may contain secrets).
  */
 export async function loadRunningSites(): Promise<RunningSitesResult> {
-  await requireSession();
+  await requireAccess();
   return readRunningSites();
 }
 

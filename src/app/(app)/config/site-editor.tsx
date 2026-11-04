@@ -5,8 +5,11 @@ import {
   CircleAlert,
   Eye,
   EyeOff,
+  Info,
   KeyRound,
+  Plus,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -29,6 +32,7 @@ import {
   generateBasicAuthPassword,
 } from "@/modules/caddy/basic-auth";
 import {
+  type HeaderFieldKey,
   type SiteField,
   type SiteFieldErrors,
   validateSiteInput,
@@ -39,6 +43,12 @@ import {
   SITE_KINDS,
 } from "@/modules/caddy/redirect";
 import { TLS_MODES } from "@/modules/caddy/tls";
+import {
+  HEADER_NAME_MAX_LENGTH,
+  HEADER_VALUE_MAX_LENGTH,
+  isSensitiveHeader,
+  isSetByCaddy,
+} from "@/modules/caddy/upstream-headers";
 import {
   type SiteFormState,
   type SiteFormValues,
@@ -52,14 +62,17 @@ type SiteFormAction = (
   formData: FormData,
 ) => Promise<SiteFormState>;
 
+type ErrorKey = SiteField | HeaderFieldKey;
+
 /** Field errors found in the browser; `null` = checked and valid (hides a server error). */
-type ClientErrors = Partial<Record<SiteField, string | null>>;
+type ClientErrors = Partial<Record<ErrorKey, string | null>>;
 
 const FIELD_ORDER: SiteField[] = [
   "hostname",
   "kind",
   "upstream",
   "upstreamSkipTlsVerify",
+  "upstreamHeaders",
   "redirectTarget",
   "redirectCode",
   "tls",
@@ -125,7 +138,7 @@ export function SiteEditor({
   const e = t.config.editor;
 
   /** Error codes; translated where they are shown. */
-  const errorFor = (field: SiteField): string | undefined =>
+  const errorFor = (field: ErrorKey): string | undefined =>
     field in clientErrors
       ? (clientErrors[field] ?? undefined)
       : state.fieldErrors?.[field];
@@ -139,7 +152,7 @@ export function SiteEditor({
     return result.ok ? {} : result.fieldErrors;
   }
 
-  function setClientError(field: SiteField, message: string | null) {
+  function setClientError(field: ErrorKey, message: string | null) {
     setClient((current) => ({
       attempt: state.attempt,
       errors: {
@@ -149,12 +162,12 @@ export function SiteEditor({
     }));
   }
 
-  function revalidate(field: SiteField, form: HTMLFormElement) {
+  function revalidate(field: ErrorKey, form: HTMLFormElement) {
     setClientError(field, check(form)[field] ?? null);
   }
 
   /** On blur: only once something was entered, so tabbing through stays quiet. */
-  function onBlur(field: SiteField, input: HTMLInputElement) {
+  function onBlur(field: ErrorKey, input: HTMLInputElement) {
     if (!input.form) return;
     if (input.value.trim() !== "" || errorFor(field)) {
       revalidate(field, input.form!);
@@ -162,7 +175,7 @@ export function SiteEditor({
   }
 
   /** While typing: only to clear (or update) an error that is already shown. */
-  function onChange(field: SiteField, input: HTMLInputElement) {
+  function onChange(field: ErrorKey, input: HTMLInputElement) {
     if (errorFor(field)) revalidate(field, input.form!);
   }
 
@@ -173,8 +186,16 @@ export function SiteEditor({
     event.preventDefault();
     const all: ClientErrors = {};
     for (const field of FIELD_ORDER) all[field] = errors[field] ?? null;
+    // Row errors from the server are replaced by this check as well.
+    for (const key of Object.keys(state.fieldErrors ?? {})) {
+      if (key.startsWith("upstreamHeaders.")) all[key as ErrorKey] = null;
+    }
+    const rows = headerErrorKeys(errors);
+    for (const key of rows) all[key] = errors[key];
     setClient({ attempt: state.attempt, errors: all });
-    const first = FIELD_ORDER.find((field) => errors[field]);
+    const first = FIELD_ORDER.flatMap((field): ErrorKey[] =>
+      field === "upstreamHeaders" ? [...rows, field] : [field],
+    ).find((field) => errors[field]);
     event.currentTarget
       .querySelector<HTMLElement>(`[data-field="${first}"]`)
       ?.focus();
@@ -346,6 +367,34 @@ export function SiteEditor({
               />
             </Field>
           )}
+
+          {/* Hidden, not removed, for redirects: switching back keeps the rows. */}
+          <UpstreamHeadersFields
+            hidden={kind === "redirect"}
+            initial={values.upstreamHeaders}
+            listError={shown(errorFor("upstreamHeaders"))}
+            errorFor={(key) => shown(errorFor(key))}
+            onBlur={onBlur}
+            onChange={onChange}
+            onRowsChanged={() => {
+              const stale: ClientErrors = {};
+              for (const key of [
+                ...Object.keys(state.fieldErrors ?? {}),
+                ...Object.keys(clientErrors),
+              ]) {
+                if (key.startsWith("upstreamHeaders")) {
+                  stale[key as ErrorKey] = null;
+                }
+              }
+              setClient((current) => ({
+                attempt: state.attempt,
+                errors: {
+                  ...(current.attempt === state.attempt ? current.errors : {}),
+                  ...stale,
+                },
+              }));
+            }}
+          />
 
           {kind !== "redirect" && httpsUpstream ? (
             <div className="flex flex-col gap-2">
@@ -624,6 +673,213 @@ function BasicAuthFields({
           ) : null}
         </>
       ) : null}
+    </div>
+  );
+}
+
+/** Row keys of header errors, in row order (name before value). */
+function headerErrorKeys(errors: SiteFieldErrors): HeaderFieldKey[] {
+  return (Object.keys(errors) as ErrorKey[])
+    .filter((key): key is HeaderFieldKey => key.startsWith("upstreamHeaders."))
+    .sort((a, b) => {
+      const [, rowA, partA] = a.split(".");
+      const [, rowB, partB] = b.split(".");
+      return (
+        Number(rowA) - Number(rowB) ||
+        (partA === "name" ? -1 : 1) - (partB === "name" ? -1 : 1)
+      );
+    });
+}
+
+interface HeaderRow {
+  /** Stable React key; rows can be removed from the middle. */
+  key: number;
+  name: string;
+  value: string;
+}
+
+/**
+ * Name/value rows submitted as `upstreamHeaderName` / `upstreamHeaderValue`
+ * pairs in DOM order. Errors are keyed by the row's position, as in the
+ * contract. Empty rows are allowed and ignored on save.
+ */
+function UpstreamHeadersFields({
+  hidden,
+  initial,
+  listError,
+  errorFor,
+  onBlur,
+  onChange,
+  onRowsChanged,
+}: {
+  hidden: boolean;
+  initial: { name: string; value: string }[];
+  listError: string | undefined;
+  errorFor: (key: HeaderFieldKey) => string | undefined;
+  onBlur: (key: HeaderFieldKey, input: HTMLInputElement) => void;
+  onChange: (key: HeaderFieldKey, input: HTMLInputElement) => void;
+  onRowsChanged: () => void;
+}) {
+  const { t } = useI18n();
+  const e = t.config.editor;
+  const [rows, setRows] = useState<HeaderRow[]>(() =>
+    initial.map((row, index) => ({ key: index, ...row })),
+  );
+  const [nextKey, setNextKey] = useState(initial.length);
+  const [added, setAdded] = useState<number | null>(null);
+
+  function update(key: number, patch: Partial<HeaderRow>) {
+    setRows((current) =>
+      current.map((row) => (row.key === key ? { ...row, ...patch } : row)),
+    );
+  }
+
+  return (
+    <div
+      hidden={hidden}
+      className="flex flex-col gap-4 rounded-2xl bg-band p-4"
+    >
+      <div className="flex flex-col gap-1">
+        <span id="upstreamHeaders-label" className="text-sm font-medium">
+          {e.upstreamHeaders}
+        </span>
+        <p id="upstreamHeaders-hint" className="text-xs text-muted-foreground">
+          {e.upstreamHeadersHint}
+        </p>
+      </div>
+
+      {rows.length > 0 ? (
+        <ul
+          aria-labelledby="upstreamHeaders-label"
+          className="flex flex-col gap-3"
+        >
+          {rows.map((row, index) => {
+            const nameKey: HeaderFieldKey = `upstreamHeaders.${index}.name`;
+            const valueKey: HeaderFieldKey = `upstreamHeaders.${index}.value`;
+            const nameError = errorFor(nameKey);
+            const valueError = errorFor(valueKey);
+            const id = `upstreamHeader-${row.key}`;
+            const note = isSensitiveHeader(row.name)
+              ? e.headerSensitive
+              : isSetByCaddy(row.name)
+                ? e.headerSetByCaddy
+                : null;
+            return (
+              <li
+                key={row.key}
+                className="flex flex-col gap-2 rounded-xl bg-card p-3 shadow-soft-sm"
+              >
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] sm:items-start">
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <Label htmlFor={`${id}-name`} className="text-xs">
+                      {e.headerName}
+                    </Label>
+                    <Input
+                      id={`${id}-name`}
+                      name="upstreamHeaderName"
+                      data-field={nameKey}
+                      value={row.name}
+                      placeholder="X-Real-IP"
+                      autoFocus={row.key === added}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      autoComplete="off"
+                      spellCheck={false}
+                      maxLength={HEADER_NAME_MAX_LENGTH}
+                      aria-invalid={nameError ? true : undefined}
+                      aria-describedby={
+                        nameError ? `${id}-name-error` : undefined
+                      }
+                      onBlur={(event) => onBlur(nameKey, event.currentTarget)}
+                      onChange={(event) => {
+                        update(row.key, { name: event.currentTarget.value });
+                        onChange(nameKey, event.currentTarget);
+                      }}
+                      className="h-11 font-mono md:h-9"
+                    />
+                    <FieldError id={`${id}-name-error`} error={nameError} />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={e.removeHeader(index + 1)}
+                    title={e.removeHeader(index + 1)}
+                    onClick={() => {
+                      setRows((current) =>
+                        current.filter((other) => other.key !== row.key),
+                      );
+                      onRowsChanged();
+                    }}
+                    className="mt-6 size-11 text-muted-foreground hover:text-destructive sm:order-last md:size-9"
+                  >
+                    <X aria-hidden />
+                  </Button>
+                  <div className="col-span-2 flex min-w-0 flex-col gap-1.5 sm:col-span-1">
+                    <Label htmlFor={`${id}-value`} className="text-xs">
+                      {e.headerValue}
+                    </Label>
+                    <Input
+                      id={`${id}-value`}
+                      name="upstreamHeaderValue"
+                      data-field={valueKey}
+                      value={row.value}
+                      placeholder="{remote_host}"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      autoComplete="off"
+                      spellCheck={false}
+                      maxLength={HEADER_VALUE_MAX_LENGTH}
+                      aria-invalid={valueError ? true : undefined}
+                      aria-describedby={
+                        valueError ? `${id}-value-error` : undefined
+                      }
+                      onBlur={(event) => onBlur(valueKey, event.currentTarget)}
+                      onChange={(event) => {
+                        update(row.key, { value: event.currentTarget.value });
+                        onChange(valueKey, event.currentTarget);
+                      }}
+                      className="h-11 font-mono md:h-9"
+                    />
+                    <FieldError id={`${id}-value-error`} error={valueError} />
+                  </div>
+                </div>
+                {note ? (
+                  <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <Info aria-hidden className="mt-px size-3.5 shrink-0" />
+                    {note}
+                  </p>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      <FieldError id="upstreamHeaders-error" error={listError} />
+
+      <div className="flex flex-col gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          data-field="upstreamHeaders"
+          onClick={() => {
+            setRows((current) => [
+              ...current,
+              { key: nextKey, name: "", value: "" },
+            ]);
+            setAdded(nextKey);
+            setNextKey(nextKey + 1);
+          }}
+          className="h-11 w-fit md:h-9"
+        >
+          <Plus aria-hidden data-icon="inline-start" />
+          {e.addHeader}
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          {e.headerPlaceholdersHint}
+        </p>
+      </div>
     </div>
   );
 }

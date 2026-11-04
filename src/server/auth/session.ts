@@ -11,6 +11,7 @@ import {
 import { getDb } from "@/server/db";
 
 import { sessionCookieName } from "./cookie";
+import { authDisabled } from "./mode";
 
 /**
  * Data access layer for authentication. This is the authoritative check:
@@ -25,9 +26,18 @@ export const getCurrentSession = cache(
   },
 );
 
-/** Use in every protected page, layout and Server Action. */
-export async function requireSession(): Promise<ValidatedSession> {
+export type Access =
+  | { mode: "session"; user: ValidatedSession["user"] }
+  /** Built-in login disabled: the reverse proxy authenticated the request. */
+  | { mode: "proxy" };
+
+/**
+ * Use in every protected page, layout and Server Action. With the built-in
+ * login disabled no session is read at all, so an old cookie means nothing.
+ */
+export async function requireAccess(): Promise<Access> {
+  if (authDisabled()) return { mode: "proxy" };
   const session = await getCurrentSession();
   if (!session) redirect("/login");
-  return session;
+  return { mode: "session", user: session.user };
 }

@@ -11,7 +11,7 @@ import {
   listCaddyfileSites,
 } from "@/modules/caddy/caddyfile-sites";
 import { definesAccessLogSnippet } from "@/modules/caddy/main-caddyfile";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 
 import { applyCaddyfile } from "./apply";
 import { readMainCaddyfile } from "./engine";
@@ -32,7 +32,7 @@ export async function enableAccessLogAction(
   sites: unknown,
   baseSha256: unknown,
 ): Promise<SiteActionResult> {
-  await requireSession();
+  await requireAccess();
   const { t } = await getI18n();
   const parsed = selection.safeParse(sites);
   if (!parsed.success) return { ok: false, message: t.actions.changeFailed };

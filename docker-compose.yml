@@ -8,6 +8,8 @@ services:
     env_file: .env
     environment:
       CADDY_ADMIN_URL: unix:///config/admin/admin.sock
+      # Lets the app refuse AUTH_DISABLED=true on a public port.
+      BIND_ADDRESS: ${BIND_ADDRESS:-0.0.0.0}
     read_only: true
     volumes:
       - data:/data

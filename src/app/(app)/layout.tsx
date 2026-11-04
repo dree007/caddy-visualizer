@@ -1,8 +1,14 @@
 import { AppShell } from "@/components/layout/app-shell";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 
-/** Protected area. Every page below additionally calls `requireSession()` itself. */
+/** Protected area. Every page below additionally calls `requireAccess()` itself. */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const { user } = await requireSession();
-  return <AppShell username={user.username}>{children}</AppShell>;
+  const access = await requireAccess();
+  return (
+    <AppShell
+      username={access.mode === "session" ? access.user.username : null}
+    >
+      {children}
+    </AppShell>
+  );
 }

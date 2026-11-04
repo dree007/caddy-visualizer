@@ -34,14 +34,36 @@ const envSchema = z.object({
     .describe(
       "Path of the SQLite database file, e.g. /data/caddy-visualizer.db",
     ),
-  ADMIN_USERNAME: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(
-      /^[a-z0-9][a-z0-9._-]{2,63}$/,
-      "3–64 characters: a–z, 0–9, '.', '_' or '-', starting with a letter or digit",
-    ),
+  /** Required unless AUTH_DISABLED=true. */
+  ADMIN_USERNAME: z.preprocess(
+    emptyToUndefined,
+    z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(
+        /^[a-z0-9][a-z0-9._-]{2,63}$/,
+        "3–64 characters: a–z, 0–9, '.', '_' or '-', starting with a letter or digit",
+      )
+      .optional(),
+  ),
+  /**
+   * Turns the built-in login off. Only for deployments in which a reverse proxy
+   * authenticates every request and the app cannot be reached otherwise.
+   */
+  AUTH_DISABLED: z.preprocess(
+    emptyToUndefined,
+    z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+  ),
+  /**
+   * Host address the compose file publishes port 3000 on (it passes
+   * BIND_ADDRESS in), or `none` without a published port. Unset when the
+   * container is started some other way.
+   */
+  BIND_ADDRESS: z.preprocess(emptyToUndefined, z.string().trim().optional()),
   /** Plain HTTP without `Secure` cookies; only for trusted, isolated networks. */
   ALLOW_INSECURE_LAN_HTTP: z.preprocess(
     emptyToUndefined,
@@ -102,6 +124,43 @@ const envSchema = z.object({
   ),
 });
 
+/** Addresses only the host itself (or nothing) can connect to. */
+const LOCAL_BIND = /^(?:127(?:\.\d{1,3}){3}|::1|\[::1\]|localhost|none)$/i;
+
+/**
+ * Configurations that would publish the admin UI without any login are
+ * refused. This only sees what the compose file passes in: it cannot know
+ * whether the proxy authenticates or whether other ports are published.
+ */
+const checkedEnvSchema = envSchema.superRefine((env, ctx) => {
+  if (!env.AUTH_DISABLED) {
+    if (env.ADMIN_USERNAME === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ADMIN_USERNAME"],
+        message: "required (unless AUTH_DISABLED=true)",
+      });
+    }
+    return;
+  }
+  if (env.ALLOW_INSECURE_LAN_HTTP) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["AUTH_DISABLED"],
+      message:
+        "cannot be combined with ALLOW_INSECURE_LAN_HTTP=true (direct LAN access); use one of them",
+    });
+  }
+  if (env.BIND_ADDRESS !== undefined && !LOCAL_BIND.test(env.BIND_ADDRESS)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["AUTH_DISABLED"],
+      message:
+        "needs BIND_ADDRESS=127.0.0.1 (reverse proxy on the same host) or no published port at all; the current BIND_ADDRESS makes the app reachable without login",
+    });
+  }
+});
+
 export type Env = z.infer<typeof envSchema>;
 
 export class EnvError extends Error {
@@ -121,7 +180,7 @@ function formatIssues(error: z.ZodError): string {
  * never values, so secrets cannot leak into logs.
  */
 export function parseEnv(source: EnvSource): Env {
-  const result = envSchema.safeParse(source);
+  const result = checkedEnvSchema.safeParse(source);
   if (!result.success) {
     throw new EnvError(
       `Invalid environment configuration:\n${formatIssues(result.error)}`,

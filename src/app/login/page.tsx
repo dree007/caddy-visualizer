@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getI18n } from "@/i18n/server";
 import { secureCookieRejected } from "@/server/auth/cookie";
 import { safeRedirectPath } from "@/server/auth/redirect";
+import { authDisabled } from "@/server/auth/mode";
 import { getCurrentSession } from "@/server/auth/session";
 
 import { LanguageSwitch } from "./language-switch";
@@ -21,7 +22,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { next } = await searchParams;
   const nextPath = typeof next === "string" ? next : undefined;
 
-  if (await getCurrentSession()) redirect(safeRedirectPath(nextPath));
+  if (authDisabled() || (await getCurrentSession())) {
+    redirect(safeRedirectPath(nextPath));
+  }
   const { t } = await getI18n();
   const request = await headers();
   const cookieRejected = secureCookieRejected(

@@ -7,7 +7,7 @@ import {
   type RollbackResult,
 } from "@/modules/caddy/apply-engine";
 import type { RevisionTrigger } from "@/modules/caddy/schema";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 import { code } from "@/i18n/codes";
 
 import { applyLogger, getApplyEngine } from "./engine";
@@ -24,7 +24,7 @@ export type { ApplyOutcome };
 export async function applyAfterChange(
   trigger: RevisionTrigger,
 ): Promise<ApplyOutcome> {
-  await requireSession();
+  await requireAccess();
   const engine = getApplyEngine();
   if (!engine) return { state: "not-configured" };
   return guarded(() => engine.apply(trigger));
@@ -33,7 +33,7 @@ export async function applyAfterChange(
 export async function rollbackToRevision(
   revisionId: string,
 ): Promise<ApplyOutcome> {
-  await requireSession();
+  await requireAccess();
   const engine = getApplyEngine();
   if (!engine) return { state: "not-configured" };
   return guarded(() => engine.rollback(revisionId));
@@ -43,7 +43,7 @@ export async function rollbackToRevision(
 export async function checkCaddyfile(
   content: string,
 ): Promise<CaddyfileCheckResult> {
-  await requireSession();
+  await requireAccess();
   const engine = getApplyEngine();
   if (!engine) return { ok: false, message: NOT_CONFIGURED };
   try {
@@ -61,7 +61,7 @@ export async function applyCaddyfile(
   content: string,
   baseSha256: string,
 ): Promise<ApplyOutcome> {
-  await requireSession();
+  await requireAccess();
   const engine = getApplyEngine();
   if (!engine) return { state: "not-configured" };
   return guarded(() => engine.applyCaddyfile(content, baseSha256));
@@ -71,7 +71,7 @@ const NOT_CONFIGURED = code("apply.notConfigured");
 
 /** Re-checks unsettled revisions against the running Caddy config. */
 export async function recoverRevisions(): Promise<void> {
-  await requireSession();
+  await requireAccess();
   await getApplyEngine()?.recover();
 }
 

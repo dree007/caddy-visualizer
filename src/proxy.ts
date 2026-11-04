@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { SESSION_TOKEN_PATTERN } from "@/modules/auth/tokens";
 import { sessionCookieName, sessionCookieOptions } from "@/server/auth/cookie";
+import { authDisabled } from "@/server/auth/mode";
 
 /** Everything else requires a session. */
 const PUBLIC_PATHS = new Set(["/login", "/api/health"]);
@@ -33,7 +34,7 @@ function jsonError(status: number, error: string) {
 /**
  * Optimistic route protection: rejects requests without a well-formed session
  * cookie before any rendering happens. The authoritative check against the
- * database happens in the data access layer (`requireSession()`).
+ * database happens in the data access layer (`requireAccess()`).
  */
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -43,6 +44,16 @@ export function proxy(request: NextRequest) {
   // CSRF defense for API routes; Server Actions have Next.js' own origin check.
   if (api && !safeMethod && !isSameOrigin(request))
     return jsonError(403, "forbidden");
+
+  // The reverse proxy authenticated the request: no cookie, no login page.
+  // The origin check above stays.
+  if (authDisabled()) {
+    if (pathname !== "/login") return NextResponse.next();
+    const home = request.nextUrl.clone();
+    home.pathname = "/";
+    home.search = "";
+    return NextResponse.redirect(home);
+  }
 
   if (PUBLIC_PATHS.has(pathname)) return NextResponse.next();
 

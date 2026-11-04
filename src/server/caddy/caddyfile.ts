@@ -4,7 +4,7 @@ import { constants } from "node:fs";
 import { access, stat } from "node:fs/promises";
 
 import { sha256Of } from "@/lib/sha256";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 import { getEnv } from "@/server/env";
 
 import { readMainCaddyfile } from "./engine";
@@ -26,7 +26,7 @@ export type CaddyfileEditorStatus =
     };
 
 export async function loadCaddyfileEditorStatus(): Promise<CaddyfileEditorStatus> {
-  await requireSession();
+  await requireAccess();
   const env = getEnv();
   if (!env.CADDY_ADMIN_URL) return { state: "not-configured" };
   const path = env.CADDY_MAIN_CADDYFILE;

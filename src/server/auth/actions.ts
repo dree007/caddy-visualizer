@@ -15,6 +15,7 @@ import { getDb } from "@/server/db";
 
 import { clientIpFrom } from "./client-ip";
 import { sessionCookieName, sessionCookieOptions } from "./cookie";
+import { authDisabled } from "./mode";
 import { safeRedirectPath } from "./redirect";
 
 export interface LoginState {
@@ -41,6 +42,8 @@ export async function loginAction(
   _previous: LoginState,
   formData: FormData,
 ): Promise<LoginState> {
+  // No password check and no session while the reverse proxy authenticates.
+  if (authDisabled()) redirect("/");
   const { t } = await getI18n();
   const rawUsername = formData.get("username");
   const username =
@@ -72,6 +75,8 @@ export async function loginAction(
 }
 
 export async function logoutAction(): Promise<void> {
+  // Logging out of the reverse proxy is the proxy's job.
+  if (authDisabled()) redirect("/");
   const store = await cookies();
   const name = sessionCookieName();
   const token = store.get(name)?.value;

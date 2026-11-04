@@ -23,7 +23,8 @@ import { LOCALES } from "@/i18n/locales";
 import { logoutAction } from "@/server/auth/actions";
 import { setLocaleAction } from "@/server/i18n-actions";
 
-export function AccountMenu({ username }: { username: string }) {
+/** `username: null`: built-in login disabled, so no account and no logout. */
+export function AccountMenu({ username }: { username: string | null }) {
   const { theme, setTheme } = useTheme();
   const [loggingOut, startLogout] = useTransition();
   const [, startLocale] = useTransition();
@@ -35,7 +36,7 @@ export function AccountMenu({ username }: { username: string }) {
         <Button
           variant="secondary"
           size="icon"
-          aria-label={t.account.menu(username)}
+          aria-label={username ? t.account.menu(username) : t.account.settings}
           disabled={loggingOut}
           className="size-10 pointer-coarse:size-11"
         >
@@ -47,11 +48,15 @@ export function AccountMenu({ username }: { username: string }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={10} className="w-64">
-        <DropdownMenuLabel className="font-normal text-muted-foreground">
-          {t.account.signedInAs}{" "}
-          <span className="font-medium text-foreground">{username}</span>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        {username ? (
+          <>
+            <DropdownMenuLabel className="font-normal text-muted-foreground">
+              {t.account.signedInAs}{" "}
+              <span className="font-medium text-foreground">{username}</span>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         {/* Secondary sections have no slot in the phone tab bar, so they live here on phones. */}
         {secondaryNavItems.map((item) => (
           <DropdownMenuItem key={item.href} asChild className="md:hidden">
@@ -87,10 +92,16 @@ export function AccountMenu({ username }: { username: string }) {
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => startLogout(() => logoutAction())}>
-          <LogOut /> {t.account.logout}
-        </DropdownMenuItem>
+        {username ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => startLogout(() => logoutAction())}
+            >
+              <LogOut /> {t.account.logout}
+            </DropdownMenuItem>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

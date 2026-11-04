@@ -9,6 +9,7 @@ import {
 
 import { SITE_KINDS } from "./redirect";
 import { TLS_MODES } from "./tls";
+import type { UpstreamHeader } from "./upstream-headers";
 
 /**
  * Source of truth for the sites managed by Caddy Visualizer. `sites.caddy` is
@@ -30,6 +31,11 @@ export const caddySites = sqliteTable(
     })
       .notNull()
       .default(false),
+    /** `header_up` entries of a proxy, in order (JSON array of `{ name, value }`). */
+    upstreamHeaders: text("upstream_headers", { mode: "json" })
+      .$type<UpstreamHeader[]>()
+      .notNull()
+      .default([]),
     /** Target URL of a redirect site (may contain placeholders such as `{uri}`). */
     redirectTarget: text("redirect_target"),
     /** 301, 302, 307 or 308. */
@@ -53,6 +59,10 @@ export const caddySites = sqliteTable(
     check(
       "caddy_sites_upstream_skip_tls_verify_check",
       sql`${table.upstreamSkipTlsVerify} = 0 or (${table.kind} = 'proxy' and ${table.upstream} like 'https://%')`,
+    ),
+    check(
+      "caddy_sites_upstream_headers_check",
+      sql`json_type(${table.upstreamHeaders}) = 'array' and (${table.kind} = 'proxy' or ${table.upstreamHeaders} = '[]')`,
     ),
     check(
       "caddy_sites_basic_auth_check",

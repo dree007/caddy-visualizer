@@ -10,7 +10,7 @@ import {
   recentEntries,
 } from "@/modules/access-log/queries";
 import { ingestionCursors } from "@/modules/access-log/schema";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 import { getDb } from "@/server/db";
 import { getEnv } from "@/server/env";
 
@@ -19,20 +19,20 @@ import { ingestionStatus } from "./ingestion";
 /** Session-checked read access for the metrics, logs and dashboard pages. */
 
 export async function loadTrafficMetrics(range: Range, host?: string) {
-  await requireSession();
+  await requireAccess();
   const db = getDb();
   return { metrics: loadMetrics(db, { range, host }), hosts: knownHosts(db) };
 }
 
 export async function loadLogEntries(query: LogQuery) {
-  await requireSession();
+  await requireAccess();
   const db = getDb();
   return { entries: recentEntries(db, query), hosts: knownHosts(db) };
 }
 
 /** In-memory state of the reader plus the persisted cursor counters. */
 export async function loadIngestionStatus() {
-  await requireSession();
+  await requireAccess();
   const env = getEnv();
   const path = env.CADDY_ACCESS_LOG_FILE;
   const cursor =

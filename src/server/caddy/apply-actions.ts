@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 
 import {
   applyAfterChange,
@@ -20,7 +20,7 @@ import { getI18n } from "@/i18n/server";
 
 /** Applies the current desired state again (after a failure or out of sync). */
 export async function retryApplyAction(): Promise<ApplyOutcome> {
-  await requireSession();
+  await requireAccess();
   const outcome = await applyAfterChange("retry");
   revalidatePath("/config", "layout");
   return outcome;
@@ -30,7 +30,7 @@ export async function retryApplyAction(): Promise<ApplyOutcome> {
 export async function rollbackRevisionAction(
   revisionId: unknown,
 ): Promise<ApplyOutcome> {
-  await requireSession();
+  await requireAccess();
   const id = z.uuid().safeParse(revisionId);
   if (!id.success) {
     return {
@@ -45,7 +45,7 @@ export async function rollbackRevisionAction(
 
 /** Compares unsettled revisions with what Caddy runs (no /load). */
 export async function recheckApplyStatusAction(): Promise<void> {
-  await requireSession();
+  await requireAccess();
   await recoverRevisions();
   revalidatePath("/config", "layout");
 }

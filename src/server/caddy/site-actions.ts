@@ -14,7 +14,7 @@ import {
   updateSite,
 } from "@/modules/caddy/sites";
 import { getI18n } from "@/i18n/server";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 import { getDb } from "@/server/db";
 
 import { applyAfterChange } from "./apply";
@@ -42,7 +42,7 @@ export async function createSiteAction(
   previous: SiteFormState,
   formData: FormData,
 ): Promise<SiteFormState> {
-  await requireSession();
+  await requireAccess();
   const { t } = await getI18n();
   const input = siteFormValues(formData);
   const values = echoedValues(input);
@@ -70,7 +70,7 @@ export async function updateSiteAction(
   previous: SiteFormState,
   formData: FormData,
 ): Promise<SiteFormState> {
-  await requireSession();
+  await requireAccess();
   const { t } = await getI18n();
   const input = siteFormValues(formData);
   const values = echoedValues(input);
@@ -114,7 +114,7 @@ export async function setSiteEnabledAction(
   id: unknown,
   enabled: unknown,
 ): Promise<SiteActionResult> {
-  await requireSession();
+  await requireAccess();
   const { t } = await getI18n();
   const parsedId = siteId.safeParse(id);
   if (!parsedId.success || typeof enabled !== "boolean") {
@@ -136,7 +136,7 @@ export async function setSiteEnabledAction(
 }
 
 export async function deleteSiteAction(id: unknown): Promise<SiteActionResult> {
-  await requireSession();
+  await requireAccess();
   const { t } = await getI18n();
   const parsedId = siteId.safeParse(id);
   if (!parsedId.success) return { ok: false, message: t.actions.deleteFailed };

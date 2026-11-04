@@ -53,6 +53,7 @@ export const en = {
     dark: "Dark",
     language: "Language",
     logout: "Log out",
+    settings: "Appearance and language",
   },
   languages: { en: "English", de: "Deutsch" },
   common: {
@@ -271,6 +272,7 @@ export const en = {
   },
   settings: {
     title: "Settings",
+    proxyAuth: "Authentication is managed by an external reverse proxy.",
     moreTitle: "More settings to come",
     moreText:
       "Account and retention settings will live here. Appearance, language and logout are in the account menu.",
@@ -431,6 +433,7 @@ export const en = {
       tls: "TLS",
       basicAuth: "Basic auth",
       skipTlsVerify: "Certificate not verified",
+      headers: (n: number) => plural(n, "header", "headers"),
       redirect: (code: number) => `Redirect ${code}`,
       redirectTo: "Redirect to",
       changed: "Changed",
@@ -474,6 +477,19 @@ export const en = {
       skipTlsVerify: "Don't verify the upstream's certificate",
       skipTlsVerifyHint:
         "For internal HTTPS upstreams with a self-signed certificate. The connection stays encrypted, but Caddy accepts any certificate (tls_insecure_skip_verify).",
+      upstreamHeaders: "Upstream headers",
+      upstreamHeadersHint:
+        "Additional HTTP headers sent to the upstream server.",
+      headerName: "Header",
+      headerValue: "Value",
+      addHeader: "Add header",
+      removeHeader: (row: number) => `Remove header ${row}`,
+      headerPlaceholdersHint:
+        "Values may use {remote_host}, {client_ip}, {scheme}, {host}, {hostport}, {port}, {method}, {uri}, {path}, {query}, {upstream_hostport} and {header.Name}, among others. A header set here replaces the incoming one.",
+      headerSetByCaddy:
+        "Caddy already sets this header; your value replaces Caddy's.",
+      headerSensitive:
+        "Looks like a credential: it is stored in plain text in the database, in sites.caddy and in the revision history.",
       enabled: "Enabled",
       enabledHint:
         "Disabled sites stay stored but are left out of the generated configuration.",
@@ -619,6 +635,25 @@ export const en = {
     "upstream.port": "The port must be a number between 1 and 65535.",
     "upstream.skipVerifyNeedsHttps":
       "Skipping the certificate check needs an https:// upstream.",
+    "header.nameRequired": "Please enter a header name.",
+    "header.nameTooLong": "The header name may have at most 100 characters.",
+    "header.nameInvalid":
+      "Please enter a valid header name: letters, digits and hyphens (e.g. X-Real-IP), starting with a letter or digit.",
+    "header.nameReserved": (p: P) =>
+      `${p.name} controls the connection itself and cannot be set here.`,
+    "header.duplicate": (p: P) =>
+      `${p.name} is already set above (header names ignore case).`,
+    "header.tooMany": (p: P) => `At most ${p.max} headers per site.`,
+    "header.valueRequired": "Please enter a value.",
+    "header.valueTooLong": "The value may have at most 1024 characters.",
+    "header.valueControl":
+      "The value must not contain line breaks or control characters.",
+    "header.valueAscii":
+      "The value may only contain ASCII characters (no umlauts or emoji).",
+    "header.valueBackslash":
+      "A backslash must not stand before a quote or at the end.",
+    "header.valuePlaceholder":
+      "Curly braces are only allowed for supported placeholders such as {remote_host} or {header.Name}.",
     "site.duplicate": "A site with this hostname already exists.",
     "accessLog.snippetMissing":
       "The Caddyfile does not define the (access_log) snippet; nothing was changed.",

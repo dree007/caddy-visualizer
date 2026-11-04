@@ -7,7 +7,7 @@ import { getI18n } from "@/i18n/server";
 import { lineDiff } from "@/lib/line-diff";
 import { sha256Of } from "@/lib/sha256";
 import { normalizeCaddyfile } from "@/modules/caddy/main-caddyfile";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 
 import { applyCaddyfile, checkCaddyfile } from "./apply";
 import type { CaddyfileEditorState } from "./caddyfile-form";
@@ -24,7 +24,7 @@ export async function caddyfileEditorAction(
   previous: CaddyfileEditorState,
   formData: FormData,
 ): Promise<CaddyfileEditorState> {
-  await requireSession();
+  await requireAccess();
   const attempt = previous.attempt + 1;
   const raw = formData.get("content");
   const echo = typeof raw === "string" ? raw : "";

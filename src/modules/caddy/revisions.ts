@@ -23,6 +23,8 @@ export interface SiteSnapshot {
   upstream: string | null;
   /** Missing in snapshots from before this option (= off). */
   upstreamSkipTlsVerify?: boolean;
+  /** Missing in snapshots from before upstream headers (= none). */
+  upstreamHeaders?: { name: string; value: string }[];
   redirectTarget?: string | null;
   redirectCode?: number | null;
   tls: string;
@@ -42,6 +44,7 @@ export function snapshotOf(sites: readonly ManagedSite[]): SiteSnapshot[] {
     kind: site.kind,
     upstream: site.upstream,
     upstreamSkipTlsVerify: site.upstreamSkipTlsVerify,
+    upstreamHeaders: site.upstreamHeaders,
     redirectTarget: site.redirectTarget,
     redirectCode: site.redirectCode,
     tls: site.tls,

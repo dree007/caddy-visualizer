@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { code } from "@/i18n/codes";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 
 import { runCertificateCheck } from "./checks";
 
@@ -18,7 +18,7 @@ export interface CheckCertificatesResult {
  * input on purpose; the targets come from Caddy's configuration only.
  */
 export async function checkCertificatesAction(): Promise<CheckCertificatesResult> {
-  await requireSession();
+  await requireAccess();
   const result = await runCertificateCheck("manual");
   revalidatePath("/certificates");
   revalidatePath("/dashboard");

@@ -19,7 +19,8 @@ export function AppShell({
   username,
   children,
 }: {
-  username: string;
+  /** `null` with the built-in login disabled. */
+  username: string | null;
   children: ReactNode;
 }) {
   return (

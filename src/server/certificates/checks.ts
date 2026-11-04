@@ -15,7 +15,7 @@ import {
   pruneCertificateChecks,
   runCertificateChecks,
 } from "@/modules/certificates/store";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 import { type OverviewSite, readRunningSites } from "@/server/caddy/admin";
 import { instanceLockFailure } from "@/server/caddy/engine";
 import { getDb } from "@/server/db";
@@ -134,7 +134,7 @@ export interface CertificateOverview {
 export async function loadCertificateOverview(
   sites?: OverviewSite[],
 ): Promise<CertificateOverview> {
-  await requireSession();
+  await requireAccess();
   const running = sites
     ? { state: "ok" as const, sites }
     : await readRunningSites();

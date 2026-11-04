@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { getI18n } from "@/i18n/server";
 import { getSite } from "@/modules/caddy/sites";
-import { requireSession } from "@/server/auth/session";
+import { requireAccess } from "@/server/auth/session";
 import { updateSiteAction } from "@/server/caddy/site-actions";
 import { getDb } from "@/server/db";
 
@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function EditSitePage({
   params,
 }: PageProps<"/config/[id]/edit">) {
-  await requireSession();
+  await requireAccess();
   const id = z.uuid().safeParse((await params).id);
   const site = id.success ? await getSite(getDb(), id.data) : null;
   if (!site) notFound();
@@ -31,6 +31,7 @@ export default async function EditSitePage({
         kind: site.kind,
         upstream: site.upstream ?? "",
         upstreamSkipTlsVerify: site.upstreamSkipTlsVerify,
+        upstreamHeaders: site.upstreamHeaders,
         redirectTarget: site.redirectTarget ?? "",
         redirectCode: String(site.redirectCode ?? 308),
         tls: site.tls,

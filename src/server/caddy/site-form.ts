@@ -8,6 +8,8 @@ export interface SiteFormValues {
   kind: SiteKind | string;
   upstream: string;
   upstreamSkipTlsVerify: boolean;
+  /** In form order, empty rows included (the contract skips them). */
+  upstreamHeaders: { name: string; value: string }[];
   redirectTarget: string;
   redirectCode: string;
   tls: TlsMode | string;
@@ -44,6 +46,7 @@ export const emptySiteFormValues: SiteFormValues = {
   kind: "proxy",
   upstream: "",
   upstreamSkipTlsVerify: false,
+  upstreamHeaders: [],
   redirectTarget: "",
   redirectCode: "308",
   tls: "automatic",
@@ -53,8 +56,9 @@ export const emptySiteFormValues: SiteFormValues = {
   basicAuthPassword: "",
 };
 
-/** Generous bound for echoing input back; the domain validation is stricter. */
+/** Generous bounds for echoing input back; the domain validation is stricter. */
 const MAX_FIELD_LENGTH = 2048;
+const MAX_HEADER_ROWS = 200;
 
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
@@ -72,6 +76,7 @@ export function siteFormValues(formData: FormData): SiteFormValues {
     kind: text(formData, "kind") || "proxy",
     upstream: text(formData, "upstream"),
     upstreamSkipTlsVerify: formData.get("upstreamSkipTlsVerify") === "on",
+    upstreamHeaders: headerRows(formData),
     redirectTarget: text(formData, "redirectTarget"),
     redirectCode: text(formData, "redirectCode"),
     tls: text(formData, "tls"),
@@ -80,6 +85,20 @@ export function siteFormValues(formData: FormData): SiteFormValues {
     basicAuthUsername: text(formData, "basicAuthUsername"),
     basicAuthPassword: text(formData, "basicAuthPassword"),
   };
+}
+
+/** `upstreamHeaderName` / `upstreamHeaderValue` pairs, one per row. */
+function headerRows(formData: FormData): SiteFormValues["upstreamHeaders"] {
+  const strings = (name: string) =>
+    formData
+      .getAll(name)
+      .slice(0, MAX_HEADER_ROWS)
+      .map((value) =>
+        typeof value === "string" ? value.slice(0, MAX_FIELD_LENGTH) : "",
+      );
+  const names = strings("upstreamHeaderName");
+  const values = strings("upstreamHeaderValue");
+  return names.map((name, index) => ({ name, value: values[index] ?? "" }));
 }
 
 /** Values sent back with a form error: never the password. */

@@ -19,6 +19,13 @@ import {
 } from "./redirect";
 import { TLS_MODES } from "./tls";
 import { formatUpstream, parseUpstream } from "./upstream";
+import {
+  headerKey,
+  parseHeaderName,
+  parseHeaderValue,
+  UPSTREAM_HEADERS_MAX,
+  type UpstreamHeader,
+} from "./upstream-headers";
 
 /** Runs a domain parser inside zod and reports its message as a field error. */
 function domainString<T>(parse: (value: string) => ParseResult<T>) {
@@ -56,6 +63,12 @@ export const siteInputSchema = z.object({
   upstreamSkipTlsVerify: z
     .boolean({ error: code("validation.invalid") })
     .default(false),
+  /** Proxies only; rows with neither name nor value are ignored. */
+  upstreamHeaders: z
+    .array(z.object({ name: z.string(), value: z.string() }), {
+      error: code("validation.invalid"),
+    })
+    .default([]),
   redirectTarget: z.string({ error: code("validation.invalid") }).default(""),
   redirectCode: z
     .union([z.string(), z.number()], { error: code("redirect.code") })
@@ -71,7 +84,11 @@ export const siteInputSchema = z.object({
 
 export type SiteInput = z.input<typeof siteInputSchema>;
 export type SiteField = keyof SiteInput;
-export type SiteFieldErrors = Partial<Record<SiteField, string>>;
+/** Error of one header row, e.g. `upstreamHeaders.2.name`. */
+export type HeaderFieldKey = `upstreamHeaders.${number}.${"name" | "value"}`;
+export type SiteFieldErrors = Partial<
+  Record<SiteField | HeaderFieldKey, string>
+>;
 
 export interface ValidSiteInput {
   hostname: string;
@@ -82,6 +99,8 @@ export interface ValidSiteInput {
   upstream: string | null;
   /** Proxies to an `https://` upstream only. */
   upstreamSkipTlsVerify: boolean;
+  /** Proxies only, in the entered order; empty for redirects. */
+  upstreamHeaders: UpstreamHeader[];
   /** Set for redirects only. */
   redirect: { target: string; code: RedirectCode } | null;
   /** `password: null` keeps the stored hash. */
@@ -143,6 +162,10 @@ export function validateSiteInput(
   ) {
     fieldErrors.upstreamSkipTlsVerify ??= code("upstream.skipVerifyNeedsHttps");
   }
+  const upstreamHeaders =
+    kind.success && kind.data === "proxy" && result.success
+      ? checkUpstreamHeaders(result.data.upstreamHeaders, fieldErrors)
+      : [];
   if (kind.success && kind.data === "redirect" && result.success) {
     const target = parseRedirectTarget(result.data.redirectTarget);
     const status = parseRedirectCode(result.data.redirectCode);
@@ -192,6 +215,7 @@ export function validateSiteInput(
         kind,
         upstream,
         upstreamSkipTlsVerify,
+        upstreamHeaders,
         redirect,
         basicAuth,
       },
@@ -205,15 +229,66 @@ export function validateSiteInput(
 }
 
 /**
+ * Validates the header rows and reports errors per row (`upstreamHeaders.<row>.name`),
+ * so they show at the field. Row numbers count every row, including empty ones.
+ */
+function checkUpstreamHeaders(
+  rows: readonly { name: string; value: string }[],
+  fieldErrors: SiteFieldErrors,
+): UpstreamHeader[] {
+  const headers: UpstreamHeader[] = [];
+  const seen = new Set<string>();
+  rows.forEach((row, index) => {
+    if (row.name.trim() === "" && row.value.trim() === "") return;
+    const name = parseHeaderName(row.name);
+    const value = parseHeaderValue(row.value);
+    if (!name.ok) fieldErrors[`upstreamHeaders.${index}.name`] = name.message;
+    else if (seen.has(headerKey(name.value))) {
+      fieldErrors[`upstreamHeaders.${index}.name`] = code("header.duplicate", {
+        name: name.value,
+      });
+    }
+    if (!value.ok)
+      fieldErrors[`upstreamHeaders.${index}.value`] = value.message;
+    if (name.ok) seen.add(headerKey(name.value));
+    if (name.ok && value.ok)
+      headers.push({ name: name.value, value: value.value });
+  });
+  if (seen.size > UPSTREAM_HEADERS_MAX) {
+    fieldErrors.upstreamHeaders = code("header.tooMany", {
+      max: UPSTREAM_HEADERS_MAX,
+    });
+  }
+  return headers;
+}
+
+/** Stored headers: already valid, unique and in order. */
+const upstreamHeadersField = z
+  .array(
+    z.object({
+      name: domainString(parseHeaderName),
+      value: domainString(parseHeaderValue),
+    }),
+  )
+  .max(UPSTREAM_HEADERS_MAX)
+  .refine(
+    (headers) =>
+      new Set(headers.map((header) => headerKey(header.name))).size ===
+      headers.length,
+  );
+
+/**
  * A site as stored and as the generator gets it: user name and bcrypt hash
  * instead of a password. Also checks rows and revision snapshots, which may be
- * older than redirects or basic auth (missing fields = proxy without auth).
+ * older than redirects, basic auth or headers (missing fields = proxy without
+ * auth or headers).
  */
 export const siteConfigSchema = z
   .object({
     ...siteFields,
     upstream: upstreamField.nullable().default(null),
     upstreamSkipTlsVerify: z.boolean().default(false),
+    upstreamHeaders: upstreamHeadersField.default([]),
     redirectTarget: domainString(parseRedirectTarget).nullable().default(null),
     redirectCode: z
       .number()
@@ -238,6 +313,10 @@ export const siteConfigSchema = z
       !site.upstreamSkipTlsVerify ||
       (site.kind === "proxy" && site.upstream?.startsWith("https://")),
     { path: ["upstreamSkipTlsVerify"] },
+  )
+  .refine(
+    (site) => site.kind === "proxy" || site.upstreamHeaders.length === 0,
+    { path: ["upstreamHeaders"] },
   )
   .refine(
     (site) =>

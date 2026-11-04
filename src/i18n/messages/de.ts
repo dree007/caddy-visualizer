@@ -52,6 +52,7 @@ export const de: Messages = {
     dark: "Dunkel",
     language: "Sprache",
     logout: "Abmelden",
+    settings: "Darstellung und Sprache",
   },
   languages: { en: "English", de: "Deutsch" },
   common: {
@@ -275,6 +276,8 @@ export const de: Messages = {
   },
   settings: {
     title: "Settings",
+    proxyAuth:
+      "Authentifizierung wird durch einen externen Reverse Proxy übernommen.",
     moreTitle: "Weitere Einstellungen folgen",
     moreText:
       "Konto und Aufbewahrungsfristen werden hier konfiguriert. Darstellung, Sprache und Abmelden findest du im Kontomenü.",
@@ -436,6 +439,7 @@ export const de: Messages = {
       tls: "TLS",
       basicAuth: "Basic Auth",
       skipTlsVerify: "Zertifikat ungeprüft",
+      headers: (n) => plural(n, "Header", "Header"),
       redirect: (code) => `Redirect ${code}`,
       redirectTo: "Weiterleitung nach",
       changed: "Geändert",
@@ -478,6 +482,19 @@ export const de: Messages = {
       skipTlsVerify: "Zertifikat des Upstreams nicht prüfen",
       skipTlsVerifyHint:
         "Für interne HTTPS-Ziele mit selbstsigniertem Zertifikat. Die Verbindung bleibt verschlüsselt, Caddy akzeptiert aber jedes Zertifikat (tls_insecure_skip_verify).",
+      upstreamHeaders: "Upstream-Header",
+      upstreamHeadersHint:
+        "Zusätzliche HTTP-Header, die Caddy an den Zielserver weitergibt.",
+      headerName: "Header",
+      headerValue: "Wert",
+      addHeader: "Header hinzufügen",
+      removeHeader: (row) => `Header ${row} entfernen`,
+      headerPlaceholdersHint:
+        "Werte können unter anderem {remote_host}, {client_ip}, {scheme}, {host}, {hostport}, {port}, {method}, {uri}, {path}, {query}, {upstream_hostport} und {header.Name} enthalten. Ein hier gesetzter Header ersetzt den eingehenden.",
+      headerSetByCaddy:
+        "Diesen Header setzt Caddy bereits; dein Wert ersetzt den von Caddy.",
+      headerSensitive:
+        "Sieht nach Zugangsdaten aus: wird im Klartext in der Datenbank, in sites.caddy und in der Revisionshistorie gespeichert.",
       enabled: "Aktiviert",
       enabledHint:
         "Deaktivierte Sites bleiben gespeichert, erscheinen aber nicht in der generierten Konfiguration.",
@@ -633,6 +650,25 @@ export const de: Messages = {
     "upstream.port": "Der Port muss eine Zahl zwischen 1 und 65535 sein.",
     "upstream.skipVerifyNeedsHttps":
       "Die Zertifikatsprüfung lässt sich nur bei einem https://-Upstream abschalten.",
+    "header.nameRequired": "Bitte gib einen Header-Namen an.",
+    "header.nameTooLong": "Der Header-Name darf höchstens 100 Zeichen haben.",
+    "header.nameInvalid":
+      "Bitte gib einen gültigen Header-Namen an: Buchstaben, Ziffern und Bindestriche (z. B. X-Real-IP), beginnend mit Buchstabe oder Ziffer.",
+    "header.nameReserved": (p: P) =>
+      `${p.name} steuert die Verbindung selbst und lässt sich hier nicht setzen.`,
+    "header.duplicate": (p: P) =>
+      `${p.name} ist weiter oben schon gesetzt (Groß-/Kleinschreibung zählt nicht).`,
+    "header.tooMany": (p: P) => `Höchstens ${p.max} Header pro Site.`,
+    "header.valueRequired": "Bitte gib einen Wert an.",
+    "header.valueTooLong": "Der Wert darf höchstens 1024 Zeichen haben.",
+    "header.valueControl":
+      "Der Wert darf keine Zeilenumbrüche oder Steuerzeichen enthalten.",
+    "header.valueAscii":
+      "Der Wert darf nur ASCII-Zeichen enthalten (keine Umlaute oder Emoji).",
+    "header.valueBackslash":
+      "Ein Backslash darf nicht vor einem Anführungszeichen oder am Ende stehen.",
+    "header.valuePlaceholder":
+      "Geschweifte Klammern sind nur für unterstützte Platzhalter wie {remote_host} oder {header.Name} erlaubt.",
     "site.duplicate": "Für diesen Hostnamen existiert bereits eine Site.",
     "accessLog.snippetMissing":
       "Die Caddyfile definiert den Baustein (access_log) nicht; es wurde nichts geändert.",
