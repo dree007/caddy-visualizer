@@ -103,6 +103,9 @@ curl -fsSLO https://raw.githubusercontent.com/dree007/caddy-visualizer/main/dock
 curl -fsSL https://raw.githubusercontent.com/dree007/caddy-visualizer/main/.env.example -o .env
 ```
 
+Optionally set `INSTANCE_LABEL` in `.env` to show a short environment or host name in the top
+bar, for example `INSTANCE_LABEL=tshetzner01`. Leave it unset to keep the default header.
+
 **4. Start.**
 
 ```sh

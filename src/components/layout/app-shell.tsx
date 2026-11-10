@@ -17,17 +17,20 @@ import { PageHeader } from "./page-title";
  */
 export function AppShell({
   username,
+  instanceLabel,
   children,
 }: {
   /** `null` with the built-in login disabled. */
   username: string | null;
+  /** Optional environment identifier displayed in the top bar. */
+  instanceLabel?: string;
   children: ReactNode;
 }) {
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-30 px-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] md:px-6">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 rounded-full bg-card/85 pr-2 pl-3 shadow-soft-md backdrop-blur-md md:pl-4">
-          <Brand />
+          <Brand instanceLabel={instanceLabel} />
           <TopNav className="mx-auto hidden md:flex" />
           <div className="ml-auto md:ml-0">
             <AccountMenu username={username} />
@@ -61,7 +64,7 @@ export function BrandMark({ className }: { className?: string }) {
   );
 }
 
-async function Brand() {
+async function Brand({ instanceLabel }: { instanceLabel?: string }) {
   const { t } = await getI18n();
   return (
     <Link
@@ -70,10 +73,15 @@ async function Brand() {
       className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-full pr-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
     >
       <BrandMark />
-      {/* Tablets show only the mark, so the section pills fit beside it. */}
-      <span className="font-display text-[1.0625rem] font-light tracking-[-0.01em] whitespace-nowrap md:max-lg:hidden">
+      {/* Keep the environment visible on phones, where the full app name is hidden. */}
+      <span className="hidden font-display text-[1.0625rem] font-light tracking-[-0.01em] whitespace-nowrap sm:inline md:max-lg:hidden">
         {t.app.name}
       </span>
+      {instanceLabel ? (
+        <span className="max-w-28 truncate rounded-full border border-border/70 bg-background/60 px-2 py-1 text-[0.625rem] leading-none font-semibold tracking-wide text-muted-foreground sm:max-w-36">
+          {instanceLabel}
+        </span>
+      ) : null}
     </Link>
   );
 }
