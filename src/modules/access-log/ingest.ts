@@ -7,7 +7,13 @@ import { eq, lt, sql } from "drizzle-orm";
 import type { Db } from "@/server/db/client";
 
 import { type AccessLogEntry, parseAccessLogLine } from "./parser";
-import { accessLogEntries, ingestionCursors, trafficHourly } from "./schema";
+import {
+  accessLogEntries,
+  ENTRY_RETENTION_MS,
+  ingestionCursors,
+  ROLLUP_RETENTION_MS,
+  trafficHourly,
+} from "./schema";
 
 /*
  * Incremental, exactly-once ingestion of Caddy's access log (ARCHITECTURE.md
@@ -17,8 +23,6 @@ import { accessLogEntries, ingestionCursors, trafficHourly } from "./schema";
  * starts a new one) is followed via inode and the first line's hash.
  */
 
-export const ENTRY_RETENTION_MS = 14 * 24 * 3600_000;
-export const ROLLUP_RETENTION_MS = 396 * 24 * 3600_000;
 const HOUR_MS = 3600_000;
 const BATCH_LINES = 1000;
 const CHUNK_BYTES = 1024 * 1024;

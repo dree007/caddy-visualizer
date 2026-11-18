@@ -28,6 +28,11 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
+  /** Optional short identifier shown beside the app name in the header. */
+  INSTANCE_LABEL: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().min(1).max(32).optional(),
+  ),
   DATABASE_PATH: z
     .string()
     .min(1)

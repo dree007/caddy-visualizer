@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { getI18n } from "@/i18n/server";
+import { toLoadBalancingInput } from "@/modules/caddy/load-balancing";
+import { formatWindow } from "@/modules/caddy/rate-limit";
 import { getSite } from "@/modules/caddy/sites";
+import { checkRateLimitModule } from "@/server/caddy/admin";
 import { requireAccess } from "@/server/auth/session";
 import { updateSiteAction } from "@/server/caddy/site-actions";
 import { getDb } from "@/server/db";
@@ -30,6 +33,9 @@ export default async function EditSitePage({
         hostname: site.hostname,
         kind: site.kind,
         upstream: site.upstream ?? "",
+        loadBalancing: site.loadBalancing
+          ? toLoadBalancingInput(site.loadBalancing)
+          : null,
         upstreamSkipTlsVerify: site.upstreamSkipTlsVerify,
         upstreamHeaders: site.upstreamHeaders,
         redirectTarget: site.redirectTarget ?? "",
@@ -39,7 +45,17 @@ export default async function EditSitePage({
         basicAuth: site.basicAuthHash !== null,
         basicAuthUsername: site.basicAuthUsername ?? "",
         basicAuthPassword: "",
+        rateLimitRules: site.rateLimitRules.map((rule) => ({
+          name: rule.name,
+          enabled: rule.enabled,
+          path: rule.path ?? "",
+          events: String(rule.events),
+          window: formatWindow(rule.windowSeconds),
+          key: rule.key,
+          keyName: rule.keyName ?? "",
+        })),
       }}
+      rateLimitModule={await checkRateLimitModule()}
       storedPassword={site.basicAuthHash !== null}
       siteId={site.id}
       version={site.updatedAt.getTime()}

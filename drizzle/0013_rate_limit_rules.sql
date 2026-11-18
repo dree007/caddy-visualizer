@@ -1,0 +1,1 @@
+ALTER TABLE `caddy_sites` ADD `rate_limit_rules` text DEFAULT '[]' NOT NULL;

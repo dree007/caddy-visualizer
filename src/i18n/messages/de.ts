@@ -165,6 +165,16 @@ export const de: Messages = {
       "Die gespeicherten Ergebnisse sind gerade nicht verfügbar. Details stehen im Server-Log.",
     privateHelp:
       "Interne Sites (Split-DNS, private Adressen) werden nur für Domains geprüft, die in CERT_CHECK_PRIVATE_DOMAINS stehen.",
+    charts: {
+      statusTitle: "Status",
+      expiryTitle: "Verbleibende Gültigkeit",
+      expiryNote: (critical, warning) =>
+        `Nächster Ablauf zuerst. Markierungen bei ${critical} und ${warning} Tagen.`,
+      expiryEmpty:
+        "Noch keine Ablaufdaten: Sie erscheinen nach der ersten erfolgreichen Prüfung.",
+      today: "Heute",
+      days: (n) => plural(n, "Tag", "Tage"),
+    },
   },
   runningSites: {
     https: "HTTPS",
@@ -242,6 +252,41 @@ export const de: Messages = {
         n === 1
           ? "1 weiterer Code in der Tabelle"
           : `${n} weitere Codes in der Tabelle`,
+    },
+    upstreams: {
+      heading: "Traffic pro Upstream",
+      intro:
+        "Welcher Upstream jede Anfrage beantwortet hat, gemessen aus Caddys Access-Log.",
+      window: (from: string, to: string) => `Gemessen ${from} – ${to}`,
+      clipped: "Daten pro Upstream werden 14 Tage aufbewahrt.",
+      weightsNote:
+        "Gewichtungen sind Konfiguration, kein gemessener Traffic; die Anteile sind gemessen.",
+      empty:
+        "In diesem Zeitraum gibt es noch keine Anfragen mit Upstream-Angabe. Caddy erfasst sie, sobald die Site Lastverteilung nutzt und access_log importiert.",
+      upstream: "Upstream",
+      health: "Zustand",
+      requests: "Anfragen",
+      share: "Anteil",
+      errors: "5xx",
+      avgTime: "Ø Zeit",
+      weight: "Gewichtung (Konfig.)",
+      overTime: "Verlauf",
+      states: {
+        healthy: "Gesund",
+        unhealthy: "Ungesund",
+        disabled: "Deaktiviert",
+        unknown: "Unbekannt",
+      },
+      notConfigured: "nicht mehr konfiguriert",
+      notProxied: "Kein Upstream",
+      notProxiedHint:
+        "Anfragen, die kein Upstream beantwortet hat: vor dem Weiterleiten abgelehnt (z. B. Basic Auth) oder keiner verfügbar.",
+      healthNote:
+        "Zustand, wie Caddy ihn gerade sieht (Caddy aktualisiert alle 10 s).",
+      healthUnavailable:
+        "Zustand unbekannt: Caddys Metriken konnten nicht gelesen werden.",
+      seriesLabel: (name: string, total: string) =>
+        `${name}: ${total} Anfragen im Verlauf`,
     },
     hosts: {
       heading: "Hosts",
@@ -440,6 +485,7 @@ export const de: Messages = {
       basicAuth: "Basic Auth",
       skipTlsVerify: "Zertifikat ungeprüft",
       headers: (n) => plural(n, "Header", "Header"),
+      loadBalanced: (n) => `Lastverteilung · ${n} Upstreams`,
       redirect: (code) => `Redirect ${code}`,
       redirectTo: "Weiterleitung nach",
       changed: "Geändert",
@@ -549,6 +595,149 @@ export const de: Messages = {
       generatePassword: "Generieren",
       generatedNotice:
         "Passwort generiert. Jetzt notieren: Nach dem Speichern lässt es sich nicht mehr anzeigen.",
+      lb: {
+        title: "Lastverteilung",
+        hint: "Anfragen auf mehrere Upstreams verteilen. Caddy verteilt selbst (reverse_proxy).",
+        upstreams: "Upstreams",
+        upstreamsHint:
+          "In Reihenfolge: Der erste erscheint in Listen, und die Strategie „Erster verfügbarer“ bevorzugt die oberen. Deaktivierte Upstreams bleiben gespeichert, bekommen aber keinen Traffic.",
+        upstream: (n: number) => `Upstream ${n}`,
+        address: "Adresse",
+        label: "Bezeichnung (optional)",
+        weight: "Gewichtung",
+        weightHint: "Relativer Anteil neuer Anfragen; 0 = keine.",
+        enabled: "Aktiviert",
+        add: "Upstream hinzufügen",
+        remove: (n: number) => `Upstream ${n} entfernen`,
+        moveUp: (n: number) => `Upstream ${n} nach oben`,
+        moveDown: (n: number) => `Upstream ${n} nach unten`,
+        policy: "Strategie",
+        policies: {
+          random: {
+            title: "Zufällig",
+            description: "Wählt einen Upstream zufällig (Caddys Standard).",
+          },
+          round_robin: {
+            title: "Reihum",
+            description: "Nimmt die Upstreams der Reihe nach.",
+          },
+          weighted_round_robin: {
+            title: "Reihum gewichtet",
+            description:
+              "Der Reihe nach im Verhältnis der Gewichtungen. Gewichtungen sind Konfiguration, kein gemessener Traffic.",
+          },
+          least_conn: {
+            title: "Wenigste Verbindungen",
+            description:
+              "Wählt den Upstream mit den wenigsten offenen Anfragen.",
+          },
+          first: {
+            title: "Erster verfügbarer",
+            description:
+              "Immer der erste verfügbare Upstream der Liste: Failover. Mit Health Checks verwenden.",
+          },
+          ip_hash: {
+            title: "IP-Hash",
+            description:
+              "Dieselbe Client-IP landet beim selben Upstream (IP der direkten Gegenstelle).",
+          },
+          uri_hash: {
+            title: "URI-Hash",
+            description: "Derselbe Pfad mit Query landet beim selben Upstream.",
+          },
+          header: {
+            title: "Header-Hash",
+            description:
+              "Derselbe Wert eines Request-Headers landet beim selben Upstream; ohne Header: zufällig.",
+          },
+          cookie: {
+            title: "Cookie (Sticky Sessions)",
+            description:
+              "Caddy setzt ein Cookie, das einen Client bei seinem Upstream hält; ohne Cookie: zufällig.",
+          },
+        },
+        header: "Header",
+        headerHint: "Name des Request-Headers für den Hash, z. B. X-Tenant.",
+        cookie: "Cookie-Name",
+        cookieHint:
+          "Caddy setzt dieses Cookie (HMAC der Upstream-Adresse, ohne Secret).",
+        advanced: "Health Checks und Wiederholungen",
+        advancedHint: "Optional. Standardmäßig aus.",
+        active: "Aktive Health Checks",
+        activeHint:
+          "Caddy ruft in einem Intervall einen Pfad auf jedem Upstream ab und nimmt fehlerhafte aus der Verteilung.",
+        healthUri: "Pfad",
+        healthInterval: "Intervall",
+        healthTimeout: "Timeout",
+        healthStatus: "Erwarteter Status",
+        healthFails: "Fehler bis ungesund",
+        healthPasses: "Erfolge bis gesund",
+        failsPassesHint: "Werte ungleich 1 brauchen Caddy 2.8 oder neuer.",
+        passive: "Passive Health Checks",
+        passiveHint:
+          "Caddy zählt fehlgeschlagene Anfragen und nimmt einen Upstream für eine Weile aus der Verteilung.",
+        failDuration: "Fehler merken für",
+        maxFails: "Fehler bis ungesund",
+        unhealthyStatus: "Statuscodes, die als Fehler zählen",
+        unhealthyStatusHint: "Optional, z. B. 5xx oder 502 503.",
+        unhealthyLatency: "Antwortzeit, die als Fehler zählt",
+        optionalHint: "Optional.",
+        retries: "Wiederholungen",
+        retriesHint:
+          "Ist ein Upstream nicht erreichbar, versucht Caddy einen anderen. Eine Anfrage, die nie bei einem Upstream ankam, darf immer wiederholt werden.",
+        retryCount: "Wiederholungen",
+        tryDuration: "Versuchen für",
+        tryInterval: "Pause zwischen Versuchen",
+        retryMethods: "Methoden, die wiederholt werden dürfen",
+        retryWarning:
+          "Nur idempotente Methoden sind wählbar: Ein wiederholtes POST oder PATCH, das schon bei einem Upstream ankam, könnte doppelt ausgeführt werden (z. B. eine doppelte Bestellung).",
+      },
+      rateLimit: "Rate Limiting",
+      rateLimitHint:
+        "Caddy beantwortet Anfragen über dem Limit mit 429 Too Many Requests und einem Retry-After-Header. Jede Regel zählt für sich, pro Client und pro Caddy-Instanz; die Zähler liegen im Arbeitsspeicher.",
+      rateLimitModule: {
+        available: "Modul installiert",
+        missing: "Modul fehlt",
+        unknown: "Modulstatus unbekannt",
+      },
+      rateLimitMissing:
+        "Das laufende Caddy enthält das Rate-Limit-Modul (github.com/mholt/caddy-ratelimit) nicht. Baue ein Caddy-Image damit, siehe docs/rate-limiting.md. Vorhandene Regeln lassen sich weiterhin deaktivieren oder entfernen.",
+      rateLimitUnknown:
+        "Caddy konnte nicht gefragt werden, ob das Rate-Limit-Modul installiert ist. Neue Regeln lassen sich hinzufügen, sobald Caddy erreichbar ist.",
+      ruleName: "Name",
+      ruleEnabled: "Aktiv",
+      rulePath: "Pfad",
+      rulePathHint:
+        "Leer: jede Anfrage. * als Platzhalter, z. B. /api/* oder /login.",
+      ruleEvents: "Anfragen",
+      ruleWindow: "Pro",
+      ruleWindowHint: "z. B. 30s, 1m oder 1h",
+      ruleKey: "Zählen pro",
+      ruleKeyName: { header: "Header-Name", cookie: "Cookie-Name" },
+      ruleKeys: {
+        remote_ip: {
+          title: "Remote-IP",
+          hint: "Adresse der direkten Verbindung; nicht fälschbar. Hinter einem weiteren Proxy oder einem gemeinsamen NAT teilen sich alle dessen Clients ein Limit. IPv6 zählt pro /64.",
+        },
+        client_ip: {
+          title: "Client-IP",
+          hint: "Client-Adresse aus X-Forwarded-For, aber nur von Proxys, die in trusted_proxies deiner Caddyfile stehen; sonst die Adresse der Verbindung. IPv6 zählt pro /64.",
+        },
+        header: {
+          title: "Request-Header",
+          hint: "Wert eines Request-Headers, z. B. ein API-Key. Vom Client gewählt: unterscheidet Clients, hält aber keinen auf, der ihn ändert. Anfragen ohne ihn teilen sich ein Limit.",
+        },
+        cookie: {
+          title: "Cookie",
+          hint: "Wert eines Cookies, z. B. einer Session. Vom Client gewählt: unterscheidet Clients, hält aber keinen auf, der ihn ändert. Anfragen ohne ihn teilen sich ein Limit.",
+        },
+        site: {
+          title: "Alle Clients zusammen",
+          hint: "Ein gemeinsames Limit für alle Clients dieser Site (oder dieses Pfads).",
+        },
+      },
+      addRule: "Regel hinzufügen",
+      removeRule: (row: number) => `Regel ${row} entfernen`,
     },
     accessLog: {
       heading: "Access Log für Caddyfile-Sites",
@@ -659,6 +848,22 @@ export const de: Messages = {
     "header.duplicate": (p: P) =>
       `${p.name} ist weiter oben schon gesetzt (Groß-/Kleinschreibung zählt nicht).`,
     "header.tooMany": (p: P) => `Höchstens ${p.max} Header pro Site.`,
+    "rateLimit.nameRequired": "Bitte einen Namen eingeben.",
+    "rateLimit.nameInvalid": (p: P) =>
+      `Kleinbuchstaben, Ziffern und Bindestriche, höchstens ${p.max} Zeichen.`,
+    "rateLimit.nameDuplicate": (p: P) =>
+      `Eine andere Regel heißt bereits „${p.name}“.`,
+    "rateLimit.pathInvalid":
+      "Ein Pfad beginnt mit / und enthält keine Leerzeichen, Anführungszeichen, Klammern oder #.",
+    "rateLimit.eventsInvalid": (p: P) => `Eine ganze Zahl von 1 bis ${p.max}.`,
+    "rateLimit.windowInvalid":
+      "Eine Dauer von 1s bis 24h, z. B. 30s, 1m oder 1h.",
+    "rateLimit.keyNameRequired": "Bitte einen Namen eingeben.",
+    "rateLimit.keyNameInvalid":
+      "Nur Buchstaben, Ziffern, Bindestrich und Unterstrich, beginnend mit Buchstabe oder Ziffer.",
+    "rateLimit.tooMany": (p: P) => `Höchstens ${p.max} Regeln pro Site.`,
+    "rateLimit.moduleMissing":
+      "Das laufende Caddy hat kein Rate-Limit-Modul (github.com/mholt/caddy-ratelimit). Installiere es oder deaktiviere die Rate-Limit-Regeln.",
     "header.valueRequired": "Bitte gib einen Wert an.",
     "header.valueTooLong": "Der Wert darf höchstens 1024 Zeichen haben.",
     "header.valueControl":
@@ -669,6 +874,34 @@ export const de: Messages = {
       "Ein Backslash darf nicht vor einem Anführungszeichen oder am Ende stehen.",
     "header.valuePlaceholder":
       "Geschweifte Klammern sind nur für unterstützte Platzhalter wie {remote_host} oder {header.Name} erlaubt.",
+    "lb.policy": "Bitte eine Lastverteilungs-Strategie wählen.",
+    "lb.duplicate": "Dieser Upstream steht schon in der Liste.",
+    "lb.mixedSchemes":
+      "Alle Upstreams brauchen dasselbe Schema (alle http:// oder alle https://).",
+    "lb.label": (p: P) =>
+      `Die Bezeichnung darf höchstens ${p.max} Zeichen und keine Zeilenumbrüche haben.`,
+    "lb.weight": (p: P) => `Bitte eine ganze Zahl von 0 bis ${p.max} eingeben.`,
+    "lb.backendsCount": (p: P) =>
+      `Lastverteilung braucht ${p.min} bis ${p.max} Upstreams. Für einen einzelnen Upstream die Lastverteilung ausschalten.`,
+    "lb.noneEnabled": "Mindestens ein Upstream muss aktiviert sein.",
+    "lb.weightsZero":
+      "Mindestens ein aktivierter Upstream braucht eine Gewichtung über 0.",
+    "lb.cookie":
+      "Bitte einen Cookie-Namen eingeben: Buchstaben, Ziffern, Bindestrich und Unterstrich, beginnend mit Buchstabe oder Ziffer.",
+    "lb.duration": (p: P) =>
+      `Bitte eine Dauer von ${p.min} bis ${p.max} eingeben, z. B. 250ms, 10s, 5m oder 1h.`,
+    "lb.healthUri":
+      "Bitte einen Pfad mit / am Anfang eingeben, z. B. /health (eine Query ist erlaubt; keine Leerzeichen, geschweiften Klammern oder #).",
+    "lb.status":
+      "Bitte einen Statuscode wie 200 oder eine Klasse wie 2xx eingeben.",
+    "lb.statusList": (p: P) =>
+      `Bitte bis zu ${p.max} Statuscodes oder Klassen eingeben, z. B. 5xx 429.`,
+    "lb.count": (p: P) =>
+      `Bitte eine ganze Zahl von ${p.min} bis ${p.max} eingeben.`,
+    "lb.retryMethods":
+      "Bitte mindestens eine Methode wählen, die wiederholt werden darf.",
+    "lb.retryLimit":
+      "Bitte eine Anzahl Wiederholungen oder eine Dauer (oder beides) eingeben.",
     "site.duplicate": "Für diesen Hostnamen existiert bereits eine Site.",
     "accessLog.snippetMissing":
       "Die Caddyfile definiert den Baustein (access_log) nicht; es wurde nichts geändert.",

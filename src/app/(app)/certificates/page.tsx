@@ -1,13 +1,15 @@
 import { CircleAlert, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 
-import { CertificateSummaryTiles } from "@/components/certificates/certificate-summary";
+import {
+  CertificateExpiryChart,
+  CertificateStatusDistribution,
+} from "@/components/certificates/certificate-charts";
 import { EmptyState } from "@/components/empty-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { translateCode } from "@/i18n";
 import { getI18n } from "@/i18n/server";
 import { formatDateTime } from "@/lib/format";
-import { summarize } from "@/modules/certificates/status";
 import { loadCertificateOverview } from "@/server/certificates/checks";
 
 import { CertificateList } from "./certificate-list";
@@ -65,11 +67,18 @@ export default async function CertificatesPage() {
         />
       ) : (
         <>
-          <CertificateSummaryTiles
-            summary={summarize(overview.views)}
-            locale={locale}
-            t={t}
-          />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <CertificateStatusDistribution
+              views={overview.views}
+              locale={locale}
+              t={t}
+            />
+            <CertificateExpiryChart
+              views={overview.views}
+              locale={locale}
+              t={t}
+            />
+          </div>
           <CertificateList views={overview.views} locale={locale} t={t} />
         </>
       )}

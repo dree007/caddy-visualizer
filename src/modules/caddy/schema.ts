@@ -7,8 +7,10 @@ import {
   text,
 } from "drizzle-orm/sqlite-core";
 
+import type { LoadBalancing } from "./load-balancing";
 import { SITE_KINDS } from "./redirect";
 import { TLS_MODES } from "./tls";
+import type { RateLimitRule } from "./rate-limit";
 import type { UpstreamHeader } from "./upstream-headers";
 
 /**
@@ -25,6 +27,14 @@ export const caddySites = sqliteTable(
     kind: text("kind", { enum: SITE_KINDS }).notNull().default("proxy"),
     /** Canonical reverse-proxy upstream `http(s)://host[:port]`; proxies only. */
     upstream: text("upstream"),
+    /**
+     * Native load balancing over several upstreams (JSON, see
+     * `load-balancing.ts`); null = the single `upstream`. With it, `upstream`
+     * is the first backend.
+     */
+    loadBalancing: text("load_balancing", {
+      mode: "json",
+    }).$type<LoadBalancing>(),
     /** Accept any certificate of an `https://` upstream (e.g. self-signed). */
     upstreamSkipTlsVerify: integer("upstream_skip_tls_verify", {
       mode: "boolean",
@@ -46,6 +56,11 @@ export const caddySites = sqliteTable(
     basicAuthUsername: text("basic_auth_username"),
     /** bcrypt hash of the basic auth password; confidential like a password. */
     basicAuthHash: text("basic_auth_hash"),
+    /** Zones of the optional `rate_limit` module, in order (JSON array). */
+    rateLimitRules: text("rate_limit_rules", { mode: "json" })
+      .$type<RateLimitRule[]>()
+      .notNull()
+      .default([]),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },
@@ -63,6 +78,10 @@ export const caddySites = sqliteTable(
     check(
       "caddy_sites_upstream_headers_check",
       sql`json_type(${table.upstreamHeaders}) = 'array' and (${table.kind} = 'proxy' or ${table.upstreamHeaders} = '[]')`,
+    ),
+    check(
+      "caddy_sites_load_balancing_check",
+      sql`${table.loadBalancing} is null or (${table.kind} = 'proxy' and json_type(${table.loadBalancing}) = 'object')`,
     ),
     check(
       "caddy_sites_basic_auth_check",

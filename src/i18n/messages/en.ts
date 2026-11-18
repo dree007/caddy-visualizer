@@ -163,6 +163,16 @@ export const en = {
       "The stored results are not available right now. Details are in the server log.",
     privateHelp:
       "Internal sites (split DNS, private addresses) are checked only for domains listed in CERT_CHECK_PRIVATE_DOMAINS.",
+    charts: {
+      statusTitle: "Status",
+      expiryTitle: "Remaining validity",
+      expiryNote: (critical: number, warning: number) =>
+        `Soonest expiry first. Marks at ${critical} and ${warning} days.`,
+      expiryEmpty:
+        "No expiry dates yet: they appear after the first successful check.",
+      today: "Today",
+      days: (n: number) => plural(n, "day", "days"),
+    },
   },
   runningSites: {
     https: "HTTPS",
@@ -239,6 +249,40 @@ export const en = {
       peakColumn: "Peak",
       moreCodes: (n: number) =>
         `${n} more ${n === 1 ? "code" : "codes"} in the table`,
+    },
+    upstreams: {
+      heading: "Traffic per upstream",
+      intro:
+        "Which upstream answered each request, measured from Caddy's access log.",
+      window: (from: string, to: string) => `Measured ${from} – ${to}`,
+      clipped: "Per-upstream data is kept for 14 days.",
+      weightsNote:
+        "Weights are configuration, not measured traffic; shares are measured.",
+      empty:
+        "No requests with upstream information in this period yet. Caddy records them once the site uses load balancing and imports access_log.",
+      upstream: "Upstream",
+      health: "Health",
+      requests: "Requests",
+      share: "Share",
+      errors: "5xx",
+      avgTime: "Avg. time",
+      weight: "Weight (config)",
+      overTime: "Over time",
+      states: {
+        healthy: "Healthy",
+        unhealthy: "Unhealthy",
+        disabled: "Disabled",
+        unknown: "Unknown",
+      },
+      notConfigured: "no longer configured",
+      notProxied: "No upstream",
+      notProxiedHint:
+        "Requests no upstream answered: rejected before proxying (e.g. basic auth) or none available.",
+      healthNote:
+        "Health as Caddy sees it right now (it refreshes every 10 s).",
+      healthUnavailable: "Health unknown: Caddy's metrics could not be read.",
+      seriesLabel: (name: string, total: string) =>
+        `${name}: ${total} requests over time`,
     },
     hosts: {
       heading: "Hosts",
@@ -434,6 +478,8 @@ export const en = {
       basicAuth: "Basic auth",
       skipTlsVerify: "Certificate not verified",
       headers: (n: number) => plural(n, "header", "headers"),
+      loadBalanced: (n: number) =>
+        `Load balancing · ${plural(n, "upstream", "upstreams")}`,
       redirect: (code: number) => `Redirect ${code}`,
       redirectTo: "Redirect to",
       changed: "Changed",
@@ -537,6 +583,148 @@ export const en = {
       generatePassword: "Generate",
       generatedNotice:
         "Password generated. Note it down now: it cannot be shown again after saving.",
+      lb: {
+        title: "Load balancing",
+        hint: "Distribute requests across several upstreams. Caddy does the balancing itself (reverse_proxy).",
+        upstreams: "Upstreams",
+        upstreamsHint:
+          "In order: the first one is shown in lists, and the “First” policy prefers the top ones. Disabled upstreams stay stored but receive no traffic.",
+        upstream: (n: number) => `Upstream ${n}`,
+        address: "Address",
+        label: "Label (optional)",
+        weight: "Weight",
+        weightHint: "Relative share of new requests; 0 = none.",
+        enabled: "Enabled",
+        add: "Add upstream",
+        remove: (n: number) => `Remove upstream ${n}`,
+        moveUp: (n: number) => `Move upstream ${n} up`,
+        moveDown: (n: number) => `Move upstream ${n} down`,
+        policy: "Policy",
+        policies: {
+          random: {
+            title: "Random",
+            description: "Picks an upstream at random (Caddy's default).",
+          },
+          round_robin: {
+            title: "Round robin",
+            description: "Takes the upstreams in turn.",
+          },
+          weighted_round_robin: {
+            title: "Weighted round robin",
+            description:
+              "In turn, in proportion to the weights. The weights are a configuration, not measured traffic.",
+          },
+          least_conn: {
+            title: "Least connections",
+            description: "Picks the upstream with the fewest open requests.",
+          },
+          first: {
+            title: "First available",
+            description:
+              "Always the first available upstream in list order: failover. Use with health checks.",
+          },
+          ip_hash: {
+            title: "IP hash",
+            description:
+              "The same client IP goes to the same upstream (IP of the direct peer).",
+          },
+          uri_hash: {
+            title: "URI hash",
+            description: "The same path and query go to the same upstream.",
+          },
+          header: {
+            title: "Header hash",
+            description:
+              "The same value of a request header goes to the same upstream; without the header: random.",
+          },
+          cookie: {
+            title: "Cookie (sticky sessions)",
+            description:
+              "Caddy sets a cookie that keeps a client on its upstream; without it: random.",
+          },
+        },
+        header: "Header",
+        headerHint: "Name of the request header to hash, e.g. X-Tenant.",
+        cookie: "Cookie name",
+        cookieHint:
+          "Caddy sets this cookie (HMAC of the upstream address, no secret).",
+        advanced: "Health checks and retries",
+        advancedHint: "Optional. Off by default.",
+        active: "Active health checks",
+        activeHint:
+          "Caddy requests a path on every upstream at an interval and takes failing ones out of rotation.",
+        healthUri: "Path",
+        healthInterval: "Interval",
+        healthTimeout: "Timeout",
+        healthStatus: "Expected status",
+        healthFails: "Failures until unhealthy",
+        healthPasses: "Passes until healthy",
+        failsPassesHint: "Values other than 1 need Caddy 2.8 or newer.",
+        passive: "Passive health checks",
+        passiveHint:
+          "Caddy counts failed requests and takes an upstream out of rotation for a while.",
+        failDuration: "Remember failures for",
+        maxFails: "Failures until unhealthy",
+        unhealthyStatus: "Status codes counted as failure",
+        unhealthyStatusHint: "Optional, e.g. 5xx or 502 503.",
+        unhealthyLatency: "Response time counted as failure",
+        optionalHint: "Optional.",
+        retries: "Retries",
+        retriesHint:
+          "When an upstream is unavailable, Caddy tries another one. A request that never reached an upstream is always safe to retry.",
+        retryCount: "Retries",
+        tryDuration: "Keep trying for",
+        tryInterval: "Wait between tries",
+        retryMethods: "Methods that may be retried",
+        retryWarning:
+          "Only idempotent methods can be chosen: retrying a POST or PATCH that already reached an upstream could run it twice (e.g. a duplicate order).",
+      },
+      rateLimit: "Rate limiting",
+      rateLimitHint:
+        "Caddy answers requests above a limit with 429 Too Many Requests and a Retry-After header. Each rule counts on its own, per client and per Caddy instance; counters are kept in memory.",
+      rateLimitModule: {
+        available: "Module installed",
+        missing: "Module missing",
+        unknown: "Module status unknown",
+      },
+      rateLimitMissing:
+        "The running Caddy does not include the rate limit module (github.com/mholt/caddy-ratelimit). Build a Caddy image with it, see docs/rate-limiting.md. Existing rules can still be disabled or removed.",
+      rateLimitUnknown:
+        "Caddy could not be asked whether the rate limit module is installed. New rules can be added once Caddy is reachable.",
+      ruleName: "Name",
+      ruleEnabled: "Active",
+      rulePath: "Path",
+      rulePathHint:
+        "Empty: every request. * as wildcard, e.g. /api/* or /login.",
+      ruleEvents: "Requests",
+      ruleWindow: "Per",
+      ruleWindowHint: "e.g. 30s, 1m or 1h",
+      ruleKey: "Count per",
+      ruleKeyName: { header: "Header name", cookie: "Cookie name" },
+      ruleKeys: {
+        remote_ip: {
+          title: "Remote IP",
+          hint: "Address of the direct connection; cannot be spoofed. Behind another proxy or a shared NAT, all of its clients share one limit. IPv6 counts per /64.",
+        },
+        client_ip: {
+          title: "Client IP",
+          hint: "Client address from X-Forwarded-For, but only from proxies listed in trusted_proxies of your Caddyfile; without that, the address of the connection. IPv6 counts per /64.",
+        },
+        header: {
+          title: "Request header",
+          hint: "Value of a request header, e.g. an API key. Chosen by the client: it tells clients apart but does not stop one that changes it. Requests without it share one limit.",
+        },
+        cookie: {
+          title: "Cookie",
+          hint: "Value of a cookie, e.g. a session. Chosen by the client: it tells clients apart but does not stop one that changes it. Requests without it share one limit.",
+        },
+        site: {
+          title: "All clients together",
+          hint: "One shared limit for every client of this site (or path).",
+        },
+      },
+      addRule: "Add rule",
+      removeRule: (row: number) => `Remove rule ${row}`,
     },
     accessLog: {
       heading: "Access log for Caddyfile sites",
@@ -644,6 +832,21 @@ export const en = {
     "header.duplicate": (p: P) =>
       `${p.name} is already set above (header names ignore case).`,
     "header.tooMany": (p: P) => `At most ${p.max} headers per site.`,
+    "rateLimit.nameRequired": "Please enter a name.",
+    "rateLimit.nameInvalid": (p: P) =>
+      `Lower-case letters, digits and hyphens, at most ${p.max} characters.`,
+    "rateLimit.nameDuplicate": (p: P) =>
+      `Another rule is already called “${p.name}”.`,
+    "rateLimit.pathInvalid":
+      "A path starts with / and contains no spaces, quotes, braces or #.",
+    "rateLimit.eventsInvalid": (p: P) => `A whole number from 1 to ${p.max}.`,
+    "rateLimit.windowInvalid": "A duration from 1s to 24h, e.g. 30s, 1m or 1h.",
+    "rateLimit.keyNameRequired": "Please enter a name.",
+    "rateLimit.keyNameInvalid":
+      "Letters, digits, hyphen and underscore only, starting with a letter or digit.",
+    "rateLimit.tooMany": (p: P) => `At most ${p.max} rules per site.`,
+    "rateLimit.moduleMissing":
+      "The running Caddy has no rate limit module (github.com/mholt/caddy-ratelimit). Install it, or disable the rate limit rules.",
     "header.valueRequired": "Please enter a value.",
     "header.valueTooLong": "The value may have at most 1024 characters.",
     "header.valueControl":
@@ -654,6 +857,32 @@ export const en = {
       "A backslash must not stand before a quote or at the end.",
     "header.valuePlaceholder":
       "Curly braces are only allowed for supported placeholders such as {remote_host} or {header.Name}.",
+    "lb.policy": "Please choose a load balancing policy.",
+    "lb.duplicate": "This upstream is already in the list.",
+    "lb.mixedSchemes":
+      "All upstreams must use the same scheme (all http:// or all https://).",
+    "lb.label": (p: P) =>
+      `The label may have at most ${p.max} characters and no line breaks.`,
+    "lb.weight": (p: P) => `Please enter a whole number from 0 to ${p.max}.`,
+    "lb.backendsCount": (p: P) =>
+      `Load balancing needs ${p.min} to ${p.max} upstreams. For a single upstream, turn load balancing off.`,
+    "lb.noneEnabled": "At least one upstream must be enabled.",
+    "lb.weightsZero": "At least one enabled upstream needs a weight above 0.",
+    "lb.cookie":
+      "Please enter a cookie name: letters, digits, hyphen and underscore, starting with a letter or digit.",
+    "lb.duration": (p: P) =>
+      `Please enter a duration from ${p.min} to ${p.max}, e.g. 250ms, 10s, 5m or 1h.`,
+    "lb.healthUri":
+      "Please enter a path starting with /, e.g. /health (an optional query is allowed; no spaces, braces or #).",
+    "lb.status":
+      "Please enter a status code such as 200 or a class such as 2xx.",
+    "lb.statusList": (p: P) =>
+      `Please enter up to ${p.max} status codes or classes, e.g. 5xx 429.`,
+    "lb.count": (p: P) =>
+      `Please enter a whole number from ${p.min} to ${p.max}.`,
+    "lb.retryMethods": "Please choose at least one method that may be retried.",
+    "lb.retryLimit":
+      "Please enter a number of retries or a duration (or both).",
     "site.duplicate": "A site with this hostname already exists.",
     "accessLog.snippetMissing":
       "The Caddyfile does not define the (access_log) snippet; nothing was changed.",

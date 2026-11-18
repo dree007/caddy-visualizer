@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import {
+  caddyPath,
   caddyText,
   caddyToken,
   type CaddyDirective,
@@ -8,11 +9,13 @@ import {
   type CaddySiteBlock,
   renderCaddyfile,
 } from "./caddyfile";
+import { rateLimitDirectives } from "./rate-limit";
 import {
   type SiteConfig,
   type SiteConfigInput,
   validateSiteConfig,
 } from "./contracts";
+import type { LoadBalancing } from "./load-balancing";
 
 /** Fixed header, so a manual edit of the generated file is recognizable as such. */
 export const SITES_CADDY_HEADER = [
@@ -118,6 +121,16 @@ function siteBlock(
       ...(accessLog
         ? [{ name: caddyToken("import"), args: [caddyToken("access_log")] }]
         : []),
+      // The answering upstream per request, for the traffic distribution.
+      ...(accessLog && site.loadBalancing
+        ? [
+            {
+              name: caddyToken("log_append"),
+              args: [caddyToken("upstream"), caddyText("{upstream_hostport}")],
+            },
+          ]
+        : []),
+      ...rateLimitDirectives(site.hostname, site.rateLimitRules),
       ...basicAuth(site),
       site.kind === "redirect" ? redirect(site) : reverseProxy(site),
     ],
@@ -155,14 +168,17 @@ function basicAuth(site: SiteConfig): CaddyDirective[] {
 /**
  * An `https://` upstream already makes Caddy use TLS; skipping the check only
  * needs `tls_insecure_skip_verify` in the HTTP transport. Upstream headers are
- * `header_up` lines in the same block, in their stored order. Without either,
+ * `header_up` lines in the same block, in their stored order. Load balancing
+ * lists the enabled backends and adds its subdirectives. Without any of these,
  * the one-line form stays.
  */
 function reverseProxy(site: SiteConfig): CaddyDirective {
+  const lb = site.loadBalancing;
   const block: CaddyDirective[] = site.upstreamHeaders.map((header) => ({
     name: caddyToken("header_up"),
     args: [caddyText(header.name), caddyText(header.value)],
   }));
+  if (lb) block.push(...loadBalancing(lb));
   if (site.upstreamSkipTlsVerify) {
     block.push({
       name: caddyToken("transport"),
@@ -172,7 +188,10 @@ function reverseProxy(site: SiteConfig): CaddyDirective {
   }
   return {
     name: caddyToken("reverse_proxy"),
-    args: [caddyToken(site.upstream ?? "")],
+    args: (lb
+      ? lb.backends.filter((backend) => backend.enabled).map((b) => b.upstream)
+      : [site.upstream ?? ""]
+    ).map(caddyToken),
     ...(block.length > 0 ? { block } : {}),
   };
 }
@@ -186,4 +205,61 @@ function redirect(site: SiteConfig): CaddyDirective {
       caddyToken(String(site.redirectCode)),
     ],
   };
+}
+
+const line = (name: string, ...args: (string | number)[]): CaddyDirective => ({
+  name: caddyToken(name),
+  args: args.map((arg) => caddyToken(String(arg))),
+});
+
+/** Caddy's own `reverse_proxy` subdirectives; only the parts that are switched on. */
+function loadBalancing(lb: LoadBalancing): CaddyDirective[] {
+  const enabled = lb.backends.filter((backend) => backend.enabled);
+  const policy: CaddyDirective =
+    lb.policy === "weighted_round_robin"
+      ? line("lb_policy", lb.policy, ...enabled.map((b) => b.weight))
+      : lb.policy === "header"
+        ? {
+            name: caddyToken("lb_policy"),
+            args: [caddyToken("header"), caddyText(lb.header ?? "")],
+          }
+        : lb.policy === "cookie"
+          ? line("lb_policy", "cookie", lb.cookie ?? "")
+          : line("lb_policy", lb.policy);
+  const lines = [policy];
+  const { retries: r, activeHealth: a, passiveHealth: p } = lb;
+  if (r) {
+    if (r.count !== null) lines.push(line("lb_retries", r.count));
+    if (r.duration !== null) lines.push(line("lb_try_duration", r.duration));
+    if (r.interval !== null) lines.push(line("lb_try_interval", r.interval));
+    lines.push({
+      name: caddyToken("lb_retry_match"),
+      args: [],
+      block: [line("method", ...r.methods)],
+    });
+  }
+  if (a) {
+    lines.push(
+      { name: caddyToken("health_uri"), args: [caddyPath(a.uri)] },
+      line("health_interval", a.interval),
+      line("health_timeout", a.timeout),
+      line("health_status", a.status),
+    );
+    // Caddy ≥ 2.8 only; left out at their default (1) so 2.7 accepts the rest.
+    if (a.fails !== 1) lines.push(line("health_fails", a.fails));
+    if (a.passes !== 1) lines.push(line("health_passes", a.passes));
+  }
+  if (p) {
+    lines.push(
+      line("fail_duration", p.failDuration),
+      line("max_fails", p.maxFails),
+    );
+    if (p.unhealthyStatus.length > 0) {
+      lines.push(line("unhealthy_status", ...p.unhealthyStatus));
+    }
+    if (p.unhealthyLatency !== null) {
+      lines.push(line("unhealthy_latency", p.unhealthyLatency));
+    }
+  }
+  return lines;
 }

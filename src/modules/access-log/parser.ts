@@ -13,10 +13,18 @@ export interface AccessLogEntry {
   status: number;
   durationMs: number;
   bytes: number;
+  /**
+   * `host:port` of the answering upstream, from the `upstream` field that
+   * load-balanced form sites add (`log_append`). Null without the field,
+   * "" when the field was empty (no upstream reached, e.g. all down).
+   */
+  upstream: string | null;
 }
 
 const MAX_PATH_LENGTH = 2048;
 const MAX_HOST_LENGTH = 253;
+/** Host (IPv6 in brackets) and port, as Caddy formats a dial address. */
+const UPSTREAM = /^(?:\[[0-9a-f:.]+\]|[a-z0-9._-]{1,253}):[0-9]{1,5}$/;
 
 /** `null` for anything that is not a well-formed access log entry. */
 export function parseAccessLogLine(line: string): AccessLogEntry | null {
@@ -61,6 +69,7 @@ export function parseAccessLogLine(line: string): AccessLogEntry | null {
     durationMs:
       typeof duration === "number" && duration >= 0 ? duration * 1000 : 0,
     bytes: typeof size === "number" && size >= 0 ? Math.round(size) : 0,
+    upstream: "upstream" in value ? upstreamOf(value.upstream) : null,
   };
 }
 
@@ -76,6 +85,15 @@ export function normalizeHost(value: unknown): string | null {
   }
   if (host === "" || host.length > MAX_HOST_LENGTH) return null;
   return /^[a-z0-9.:_-]+$/.test(host) ? host : null;
+}
+
+/** Caddy writes `null` when no upstream was chosen (e.g. all unhealthy: 503). */
+function upstreamOf(value: unknown): string | null {
+  if (value === null) return "";
+  if (typeof value !== "string") return null;
+  const upstream = value.trim().toLowerCase();
+  // Anything else is not from our log_append and is ignored.
+  return upstream === "" || UPSTREAM.test(upstream) ? upstream : null;
 }
 
 /** Caddy writes seconds as a float; with a custom time_format a string. */

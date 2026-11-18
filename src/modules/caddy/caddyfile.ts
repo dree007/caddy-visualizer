@@ -50,6 +50,12 @@ const SAFE_TOKEN = /^[A-Za-z0-9][A-Za-z0-9._:/[\]-]*$/;
  * `$` has no meaning to the lexer: environment variables need `{$NAME}`.
  */
 const BCRYPT_TOKEN = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
+/**
+ * An absolute request path with an optional query (`/health?full=1`), e.g. for
+ * `health_uri`: no whitespace, quotes, braces, `#`, `\\` or `@`. Only used as
+ * a subdirective argument, where a leading `/` is not read as a matcher.
+ */
+const PATH_TOKEN = /^\/[A-Za-z0-9\-._~/%?=&:+,;]*$/;
 /** Printable ASCII, no line breaks; `{` and `}` are excluded as well. */
 const SAFE_COMMENT = /^[\x20-\x7a|~]*$/;
 
@@ -94,7 +100,7 @@ export const TEXT_PLACEHOLDERS = [
   "tls_cipher",
   "upstream_hostport",
 ] as const;
-const PLACEHOLDER = `\\{(?:${TEXT_PLACEHOLDERS.join("|")}|header\\.[A-Za-z0-9-]+)\\}`;
+const PLACEHOLDER = `\\{(?:${TEXT_PLACEHOLDERS.join("|")}|(?:header|cookie)\\.[A-Za-z0-9_-]+)\\}`;
 /** Printable ASCII without `"`, `\`, `{` and `}`. */
 const TEXT_CHAR = "[\\x20\\x21\\x23-\\x5b\\x5d-\\x7a\\x7c\\x7e]";
 /**
@@ -151,6 +157,17 @@ export function caddyText(value: string): CaddyToken {
   return (BARE_TEXT.test(value) ? value : quoted(value)) as CaddyToken;
 }
 
+/**
+ * A request path as a subdirective argument (`health_uri /health`). Separate
+ * from `caddyToken`, which never yields a leading `/` (a matcher there).
+ */
+export function caddyPath(value: string): CaddyToken {
+  if (!PATH_TOKEN.test(value)) {
+    throw new CaddyfileError(`Unsafe Caddyfile path: ${JSON.stringify(value)}`);
+  }
+  return value as CaddyToken;
+}
+
 export function caddyToken(value: string): CaddyToken {
   if (!isCaddyToken(value)) {
     throw new CaddyfileError(
@@ -205,6 +222,8 @@ function renderDirective(directive: CaddyDirective, depth: number): string[] {
 
 /** Branded types only exist at compile time, so every token is re-checked. */
 function checked(token: CaddyToken): string {
-  if (BARE_TEXT.test(token) || isQuotedToken(token)) return token;
+  if (BARE_TEXT.test(token) || isQuotedToken(token) || PATH_TOKEN.test(token)) {
+    return token;
+  }
   return caddyToken(token);
 }

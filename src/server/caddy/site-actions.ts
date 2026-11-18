@@ -13,16 +13,20 @@ import {
   type SiteResult,
   updateSite,
 } from "@/modules/caddy/sites";
+import type { SiteFieldErrors } from "@/modules/caddy/contracts";
+import { code } from "@/i18n/codes";
 import { getI18n } from "@/i18n/server";
 import { requireAccess } from "@/server/auth/session";
 import { getDb } from "@/server/db";
 
+import { checkRateLimitModule } from "./admin";
 import { applyAfterChange } from "./apply";
 import {
   type ApplyOutcome,
   type SiteActionResult,
   echoedValues,
   type SiteFormState,
+  type SiteFormValues,
   siteFormValues,
 } from "./site-form";
 
@@ -38,6 +42,21 @@ const siteId = z.uuid();
 /** `updatedAt` (epoch ms) of the version the editor was opened with. */
 const siteVersion = z.coerce.number().int().positive();
 
+/**
+ * Enabled rate limit rules need the optional module: refused when Caddy
+ * certainly lacks it. If Caddy is unreachable, the apply engine's `/adapt`
+ * still stops a config Caddy cannot read before anything is written.
+ */
+async function rateLimitBlocked(
+  input: SiteFormValues,
+): Promise<SiteFieldErrors | null> {
+  if (input.kind !== "proxy") return null;
+  if (!input.rateLimitRules.some((rule) => rule.enabled)) return null;
+  return (await checkRateLimitModule()) === "missing"
+    ? { rateLimitRules: code("rateLimit.moduleMissing") }
+    : null;
+}
+
 export async function createSiteAction(
   previous: SiteFormState,
   formData: FormData,
@@ -50,6 +69,8 @@ export async function createSiteAction(
 
   let result: SiteResult<ManagedSite>;
   try {
+    const blocked = await rateLimitBlocked(input);
+    if (blocked) return { values, fieldErrors: blocked, attempt };
     result = await createSite(getDb(), input);
   } catch (error) {
     console.error("Creating a site failed", error);
@@ -83,6 +104,8 @@ export async function updateSiteAction(
 
   let result: SiteResult<ManagedSite>;
   try {
+    const blocked = await rateLimitBlocked(input);
+    if (blocked) return { values, fieldErrors: blocked, attempt };
     result = await updateSite(
       getDb(),
       id.data,

@@ -82,6 +82,8 @@ export default async function ConfigPage({
             url: site.upstream ?? "",
             skipTlsVerify: site.upstreamSkipTlsVerify,
             headers: site.upstreamHeaders.length,
+            upstreams:
+              site.loadBalancing?.backends.filter((b) => b.enabled).length ?? 0,
           },
     tls: site.tls,
     basicAuth: site.basicAuthHash !== null,

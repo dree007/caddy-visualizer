@@ -85,6 +85,20 @@
       "when": 1793731704837,
       "tag": "0011_upstream_headers",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1794891961122,
+      "tag": "0012_load_balancing",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1794923725072,
+      "tag": "0013_rate_limit_rules",
+      "breakpoints": true
     }
   ]
 }

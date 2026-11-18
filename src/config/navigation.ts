@@ -50,7 +50,7 @@ export const navItems: readonly NavItem[] = [
     href: "/certificates",
     key: "certificates",
     icon: ShieldCheck,
-    placement: "secondary",
+    placement: "primary",
   },
   {
     href: "/settings",

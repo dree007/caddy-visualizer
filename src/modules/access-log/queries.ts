@@ -2,7 +2,7 @@ import { and, desc, eq, gte, lt, sql, type SQL } from "drizzle-orm";
 
 import type { Db } from "@/server/db/client";
 
-import { accessLogEntries, trafficHourly } from "./schema";
+import { accessLogEntries, ENTRY_RETENTION_MS, trafficHourly } from "./schema";
 
 export const RANGES = ["24h", "7d", "30d"] as const;
 export type Range = (typeof RANGES)[number];
@@ -185,6 +185,111 @@ function summarize(rows: (typeof trafficHourly.$inferSelect)[]): {
         avgMs: row.requests > 0 ? sum / row.requests : null,
       }))
       .sort((a, b) => b.requests - a.requests || a.host.localeCompare(b.host)),
+  };
+}
+
+/** Requests one upstream answered, measured from the access log. */
+export interface UpstreamRow {
+  /** `host:port`, as Caddy logged it. */
+  upstream: string;
+  requests: number;
+  /** Responses ≥ 500. */
+  errors: number;
+  avgMs: number | null;
+  /** One value per bucket of `UpstreamMetrics.labels`. */
+  series: number[];
+}
+
+export interface UpstreamMetrics {
+  /** The measured window (epoch ms): `from` up to `to` (now). */
+  from: number;
+  to: number;
+  /** The window is shorter than the range: entries are kept 14 days. */
+  clipped: boolean;
+  /** Bucket labels (local hours or dates) of the series. */
+  labels: string[];
+  /** Upstreams with requests, most requests first. */
+  upstreams: UpstreamRow[];
+  /** Sum of `upstreams`: the base of the shares. */
+  proxied: number;
+  /** Logged with an empty upstream: no upstream answered (rejected before proxying, all down). */
+  notProxied: number;
+}
+
+/**
+ * Requests per upstream of one host, counted from stored access log entries
+ * that carry the `upstream` field. Nothing is estimated: lines without the
+ * field (before load balancing, other sites) are not counted at all.
+ */
+export function loadUpstreamMetrics(
+  db: Db,
+  {
+    range,
+    host,
+    now = new Date(),
+    timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+  }: { range: Range; host: string; now?: Date; timeZone?: string },
+): UpstreamMetrics {
+  const all = bucketsOf(range, now, timeZone);
+  const cutoff = now.getTime() - ENTRY_RETENTION_MS;
+  // Buckets that end within the retention.
+  const buckets = all.filter(
+    (_, i) => (all[i + 1]?.start ?? Infinity) > cutoff,
+  );
+  const from = Math.max(all[0]!.start, cutoff);
+  const rows = db.all<{
+    upstream: string;
+    hour: number;
+    requests: number;
+    errors: number;
+    duration: number;
+  }>(
+    sql`select ${accessLogEntries.upstream} as upstream, (${accessLogEntries.ts} / ${HOUR}) * ${HOUR} as hour, count(*) as requests, sum(${accessLogEntries.status} >= 500) as errors, sum(${accessLogEntries.durationMs}) as duration from ${accessLogEntries} where ${accessLogEntries.host} = ${host} and ${accessLogEntries.ts} >= ${from} and ${accessLogEntries.upstream} is not null group by upstream, hour`,
+  );
+
+  const indexOf = bucketIndex(buckets, range);
+  const upstreams = new Map<string, UpstreamRow & { duration: number }>();
+  let notProxied = 0;
+  for (const row of rows) {
+    if (row.upstream === "") {
+      notProxied += row.requests;
+      continue;
+    }
+    let entry = upstreams.get(row.upstream);
+    if (!entry) {
+      entry = {
+        upstream: row.upstream,
+        requests: 0,
+        errors: 0,
+        avgMs: null,
+        series: buckets.map(() => 0),
+        duration: 0,
+      };
+      upstreams.set(row.upstream, entry);
+    }
+    entry.requests += row.requests;
+    entry.errors += row.errors;
+    entry.duration += row.duration;
+    // The first hour may start before `from`; it belongs to the first bucket.
+    const index = Math.max(0, indexOf(row.hour));
+    if (index < buckets.length) entry.series[index]! += row.requests;
+  }
+  const list = [...upstreams.values()]
+    .map(({ duration, ...row }) => ({
+      ...row,
+      avgMs: row.requests > 0 ? duration / row.requests : null,
+    }))
+    .sort(
+      (a, b) => b.requests - a.requests || (a.upstream < b.upstream ? -1 : 1),
+    );
+  return {
+    from,
+    to: now.getTime(),
+    clipped: from > all[0]!.start,
+    labels: buckets.map((bucket) => bucket.label),
+    upstreams: list,
+    proxied: list.reduce((sum, row) => sum + row.requests, 0),
+    notProxied,
   };
 }
 

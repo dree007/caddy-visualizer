@@ -10,6 +10,7 @@ import {
   type RevisionStatus,
   type RevisionTrigger,
 } from "./schema";
+import type { RateLimitRule } from "./rate-limit";
 import type { ManagedSite } from "./sites";
 
 export type ConfigRevision = ConfigRevisionRow;
@@ -21,6 +22,8 @@ export interface SiteSnapshot {
   /** Missing in snapshots from before redirects (= proxy). */
   kind?: string;
   upstream: string | null;
+  /** Missing in snapshots from before load balancing (= single upstream). */
+  loadBalancing?: unknown;
   /** Missing in snapshots from before this option (= off). */
   upstreamSkipTlsVerify?: boolean;
   /** Missing in snapshots from before upstream headers (= none). */
@@ -32,6 +35,8 @@ export interface SiteSnapshot {
   /** Missing in snapshots from before basic auth; restored by a rollback. */
   basicAuthUsername?: string | null;
   basicAuthHash?: string | null;
+  /** Missing in snapshots from before rate limiting (= none). */
+  rateLimitRules?: RateLimitRule[];
   /** Missing in snapshots written before rollbacks restored sites. */
   createdAt?: string;
   updatedAt: string;
@@ -43,6 +48,7 @@ export function snapshotOf(sites: readonly ManagedSite[]): SiteSnapshot[] {
     hostname: site.hostname,
     kind: site.kind,
     upstream: site.upstream,
+    loadBalancing: site.loadBalancing,
     upstreamSkipTlsVerify: site.upstreamSkipTlsVerify,
     upstreamHeaders: site.upstreamHeaders,
     redirectTarget: site.redirectTarget,
@@ -51,6 +57,7 @@ export function snapshotOf(sites: readonly ManagedSite[]): SiteSnapshot[] {
     enabled: site.enabled,
     basicAuthUsername: site.basicAuthUsername,
     basicAuthHash: site.basicAuthHash,
+    rateLimitRules: site.rateLimitRules,
     createdAt: site.createdAt.toISOString(),
     updatedAt: site.updatedAt.toISOString(),
   }));

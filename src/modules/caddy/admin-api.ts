@@ -107,6 +107,11 @@ export interface CaddyAdminClient {
     path?: readonly string[],
   ): Promise<{ config: unknown; etag: string | null }>;
   /**
+   * `GET /metrics`: Caddy's Prometheus metrics in text format (read-only,
+   * e.g. the health of reverse proxy upstreams).
+   */
+  getMetrics(): Promise<string>;
+  /**
    * `POST /adapt`: Caddyfile → JSON without loading. Only checks what the
    * adapter sees (syntax, unknown directives, duplicate sites, missing
    * imports); provisioning errors (e.g. missing certificate files) are only
@@ -199,7 +204,7 @@ export function createCaddyAdminClient({
           // Use its accepted loopback Host. 2.11.7 disables the Unix Host check
           // and also accepts this header. TCP keeps node's host:port.
           ...(address.transport === "unix" ? { Host: UNIX_SOCKET_HOST } : {}),
-          Accept: "application/json",
+          Accept: path === "/metrics" ? "text/plain" : "application/json",
           ...(payload
             ? {
                 "Content-Type": body!.contentType,
@@ -304,6 +309,20 @@ export function createCaddyAdminClient({
       const response = await send(operation, "GET", configPath(path));
       ensureOk(operation, response);
       return { config: jsonBody(operation, response), etag: response.etag };
+    },
+
+    async getMetrics() {
+      const operation = "GET /metrics";
+      const response = await send(operation, "GET", "/metrics");
+      ensureOk(operation, response);
+      if (!response.contentType.startsWith("text/plain")) {
+        throw new CaddyAdminError(
+          "invalid-response",
+          operation,
+          `unexpected content type "${response.contentType.slice(0, 100)}"`,
+        );
+      }
+      return response.body;
     },
 
     async adaptCaddyfile(caddyfile) {

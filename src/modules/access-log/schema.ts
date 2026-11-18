@@ -7,6 +7,10 @@ import {
   text,
 } from "drizzle-orm/sqlite-core";
 
+/** Retention of single entries and of the hourly rollups (ARCHITECTURE.md 6.5). */
+export const ENTRY_RETENTION_MS = 14 * 24 * 3600_000;
+export const ROLLUP_RETENTION_MS = 396 * 24 * 3600_000;
+
 /**
  * Requests from Caddy's access log, reduced to the fields of ARCHITECTURE.md
  * 6.4: no client IP, query string, headers or user agent. Kept 14 days.
@@ -24,6 +28,13 @@ export const accessLogEntries = sqliteTable(
     status: integer("status").notNull(),
     durationMs: real("duration_ms").notNull(),
     bytes: integer("bytes").notNull(),
+    /**
+     * `host:port` of the upstream that answered, from the `upstream` field
+     * load-balanced form sites add with `log_append` (a failed dial names the
+     * upstream tried). Null without that field; empty when Caddy chose no
+     * upstream (all unavailable, or rejected before proxying).
+     */
+    upstream: text("upstream"),
   },
   (table) => [
     index("access_log_entries_ts_idx").on(table.ts),

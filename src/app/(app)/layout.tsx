@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { getEnv } from "@/server/env";
 import { requireAccess } from "@/server/auth/session";
 
 /** Protected area. Every page below additionally calls `requireAccess()` itself. */
@@ -7,6 +8,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <AppShell
       username={access.mode === "session" ? access.user.username : null}
+      instanceLabel={getEnv().INSTANCE_LABEL}
     >
       {children}
     </AppShell>

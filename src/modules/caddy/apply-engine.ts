@@ -19,6 +19,7 @@ import {
   redirectManagedImport,
   validateMainEdit,
 } from "./main-caddyfile";
+import { isMissingRateLimitModule } from "./rate-limit-probe";
 import { restoreRevisionSnapshot } from "./rollback";
 import type { InstanceLock, InstanceLockFailure } from "./instance-lock";
 import { type ManagedFiles, writeInPlace } from "./managed-files";
@@ -779,6 +780,9 @@ export function messageFor(error: unknown): string {
   );
   if (duplicate) {
     return code("apply.duplicateAddress", { address: duplicate[1]! });
+  }
+  if (isMissingRateLimitModule(error.caddyMessage ?? "")) {
+    return code("rateLimit.moduleMissing");
   }
   return APPLY_MESSAGES.rejected;
 }

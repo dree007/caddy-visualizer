@@ -6,10 +6,14 @@ import {
   knownHosts,
   type LogQuery,
   loadMetrics,
+  loadUpstreamMetrics,
   type Range,
   recentEntries,
 } from "@/modules/access-log/queries";
 import { ingestionCursors } from "@/modules/access-log/schema";
+import { dialAddress } from "@/modules/caddy/load-balancing";
+import { caddySites } from "@/modules/caddy/schema";
+import { loadUpstreamHealth } from "@/server/caddy/admin";
 import { requireAccess } from "@/server/auth/session";
 import { getDb } from "@/server/db";
 import { getEnv } from "@/server/env";
@@ -23,6 +27,41 @@ export async function loadTrafficMetrics(range: Range, host?: string) {
   const db = getDb();
   return { metrics: loadMetrics(db, { range, host }), hosts: knownHosts(db) };
 }
+
+/**
+ * Traffic distribution of one host over its upstreams: measured counts from
+ * the access log, the configured backends of its load-balanced form site (if
+ * any) and Caddy's current health view. `null` when there is nothing to show.
+ */
+export async function loadUpstreamDistribution(range: Range, host: string) {
+  await requireAccess();
+  const db = getDb();
+  const site = db
+    .select({ loadBalancing: caddySites.loadBalancing })
+    .from(caddySites)
+    .where(eq(caddySites.hostname, host))
+    .get();
+  const lb = site?.loadBalancing ?? null;
+  const metrics = loadUpstreamMetrics(db, { range, host });
+  if (!lb && metrics.proxied + metrics.notProxied === 0) return null;
+  return {
+    metrics,
+    configured: lb
+      ? {
+          policy: lb.policy,
+          backends: lb.backends.map((backend) => ({
+            ...backend,
+            dial: dialAddress(backend.upstream),
+          })),
+        }
+      : null,
+    health: lb ? await loadUpstreamHealth() : null,
+  };
+}
+
+export type UpstreamDistribution = NonNullable<
+  Awaited<ReturnType<typeof loadUpstreamDistribution>>
+>;
 
 export async function loadLogEntries(query: LogQuery) {
   await requireAccess();

@@ -27,12 +27,15 @@
 - **Caddyfile editor**: edit the main Caddyfile in the browser. Caddy checks it before anything
   is saved; you see its message with line numbers and a diff.
 - **Sites by form**: reverse proxies and redirects without writing Caddyfile syntax, with
-  optional basic auth, upstream headers and self-signed HTTPS upstreams.
+  optional basic auth, upstream headers, self-signed HTTPS upstreams, native load balancing
+  over several upstreams (policies, health checks, retries) and rate limits (needs a Caddy build
+  with the rate limit module, see [docs/rate-limiting.md](docs/rate-limiting.md)).
 - **Safe changes**: every change is checked and applied through Caddy's admin API, recorded as a
   revision and can be rolled back. Files are only written after Caddy accepted the change.
 - **Dashboard**: all sites Caddy currently runs, from the form or the Caddyfile.
 - **Metrics and logs**: requests, status codes, traffic and response times from Caddy's access
-  log, with trends against the previous period. No IP addresses or query strings are stored.
+  log, with trends against the previous period. For load-balanced sites: measured requests per
+  upstream and Caddy's health view. No IP addresses or query strings are stored.
 - **Certificates**: status and expiry of the TLS certificate of every HTTPS site, with warnings
   before it expires.
 - **Built-in login** with a single admin account, or login handled by your reverse proxy
@@ -102,6 +105,9 @@ mkdir caddy-visualizer && cd caddy-visualizer
 curl -fsSLO https://raw.githubusercontent.com/dree007/caddy-visualizer/main/docker-compose.yml
 curl -fsSL https://raw.githubusercontent.com/dree007/caddy-visualizer/main/.env.example -o .env
 ```
+
+Optionally set `INSTANCE_LABEL` in `.env` (e.g. `INSTANCE_LABEL=prod`) to show a short name in the top bar
+that tells several instances apart.
 
 **4. Start.**
 

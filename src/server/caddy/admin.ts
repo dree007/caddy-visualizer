@@ -6,6 +6,9 @@ import {
   createCaddyAdminClient,
 } from "@/modules/caddy/admin-api";
 import { configFingerprint } from "@/modules/caddy/config-fingerprint";
+import { parseUpstreamHealth } from "@/modules/caddy/load-balancing";
+import type { RateLimitModuleStatus } from "@/modules/caddy/rate-limit";
+import { probeRateLimitModule } from "@/modules/caddy/rate-limit-probe";
 import { type RunningSite, runningSites } from "@/modules/caddy/site-inventory";
 import { listSites } from "@/modules/caddy/sites";
 import { lastAppliedRevision } from "@/modules/caddy/revisions";
@@ -83,6 +86,17 @@ export async function checkCaddyRuntime(): Promise<CaddyRuntimeStatus> {
   };
 }
 
+/** Whether the running Caddy has the optional rate limit module; loads nothing. */
+export async function checkRateLimitModule(): Promise<RateLimitModuleStatus> {
+  await requireAccess();
+  try {
+    return await probeRateLimitModule(getCaddyAdminClient());
+  } catch (error) {
+    console.error("Rate limit module check failed", error);
+    return "unknown";
+  }
+}
+
 export interface OverviewSite extends RunningSite {
   /** Form site of the manager (with its id), or written by hand. */
   source: { kind: "form"; siteId: string } | { kind: "manual" };
@@ -143,5 +157,26 @@ export function describeCaddyAdminError(error: CaddyAdminError): string {
       return code("caddy.rejected", { status: error.status ?? 0 });
     case "invalid-response":
       return code("caddy.invalidResponse");
+  }
+}
+
+export type UpstreamHealthResult =
+  | { state: "not-configured" }
+  | { state: "unreachable"; message: string }
+  /** `host:port` → healthy, as Caddy sees it; absent = Caddy reports nothing. */
+  | { state: "ok"; health: Record<string, boolean> };
+
+/** Upstream health from Caddy's metrics (`GET /metrics`), read once per page view. */
+export async function loadUpstreamHealth(): Promise<UpstreamHealthResult> {
+  await requireAccess();
+  const client = getCaddyAdminClient();
+  if (!client) return { state: "not-configured" };
+  try {
+    const health = parseUpstreamHealth(await client.getMetrics());
+    return { state: "ok", health: Object.fromEntries(health) };
+  } catch (error) {
+    if (!(error instanceof CaddyAdminError)) throw error;
+    console.error("Caddy admin API metrics read failed", error);
+    return { state: "unreachable", message: describeCaddyAdminError(error) };
   }
 }

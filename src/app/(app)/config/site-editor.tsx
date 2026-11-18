@@ -7,19 +7,23 @@ import {
   EyeOff,
   Info,
   KeyRound,
+  Gauge,
   Plus,
   ShieldCheck,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import {
+  type ComponentProps,
   type FormEvent,
   type ReactNode,
   useActionState,
+  useRef,
   useState,
 } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,15 +37,28 @@ import {
 } from "@/modules/caddy/basic-auth";
 import {
   type HeaderFieldKey,
+  type RateLimitFieldKey,
   type SiteField,
   type SiteFieldErrors,
   validateSiteInput,
 } from "@/modules/caddy/contracts";
 import {
+  defaultLoadBalancingInput,
+  type LbFieldKey,
+} from "@/modules/caddy/load-balancing";
+import {
   REDIRECT_CODES,
   REDIRECT_TARGET_MAX_LENGTH,
   SITE_KINDS,
 } from "@/modules/caddy/redirect";
+import {
+  RATE_LIMIT_KEYS,
+  RATE_LIMIT_KEY_NAME_MAX_LENGTH,
+  RATE_LIMIT_NAME_MAX_LENGTH,
+  RATE_LIMIT_PATH_MAX_LENGTH,
+  RATE_LIMIT_RULES_MAX,
+  type RateLimitModuleStatus,
+} from "@/modules/caddy/rate-limit";
 import { TLS_MODES } from "@/modules/caddy/tls";
 import {
   HEADER_NAME_MAX_LENGTH,
@@ -50,6 +67,7 @@ import {
   isSetByCaddy,
 } from "@/modules/caddy/upstream-headers";
 import {
+  type RateLimitRuleValues,
   type SiteFormState,
   type SiteFormValues,
   siteFormValues,
@@ -57,12 +75,19 @@ import {
 import { translateCode } from "@/i18n";
 import { useI18n } from "@/i18n/client";
 
+import { FieldError } from "./field-error";
+import { LoadBalancingFields, type LbState } from "./load-balancing-fields";
+
 type SiteFormAction = (
   state: SiteFormState,
   formData: FormData,
 ) => Promise<SiteFormState>;
 
-type ErrorKey = SiteField | HeaderFieldKey;
+type RowKey = HeaderFieldKey | RateLimitFieldKey;
+type ErrorKey = SiteField | RowKey | LbFieldKey;
+
+/** List fields whose errors are also reported per row (`<list>.<row>.<field>`). */
+const ROW_LISTS = ["upstreamHeaders", "rateLimitRules"] as const;
 
 /** Field errors found in the browser; `null` = checked and valid (hides a server error). */
 type ClientErrors = Partial<Record<ErrorKey, string | null>>;
@@ -80,6 +105,7 @@ const FIELD_ORDER: SiteField[] = [
   "basicAuth",
   "basicAuthUsername",
   "basicAuthPassword",
+  "rateLimitRules",
 ];
 
 /**
@@ -95,6 +121,7 @@ export function SiteEditor({
   version,
   title,
   submitLabel,
+  rateLimitModule,
 }: {
   action: SiteFormAction;
   initialValues: SiteFormValues;
@@ -106,6 +133,8 @@ export function SiteEditor({
   version?: number;
   title: string;
   submitLabel: string;
+  /** Whether the running Caddy has the optional `rate_limit` module. */
+  rateLimitModule: RateLimitModuleStatus;
 }) {
   const [state, formAction, pending] = useActionState(action, {
     values: initialValues,
@@ -132,8 +161,24 @@ export function SiteEditor({
     upstreamInput.attempt === state.attempt
       ? upstreamInput.upstream
       : state.values.upstream;
+  const [lbChoice, setLbChoice] = useState<{ attempt: number; lb: LbState }>({
+    attempt: -1,
+    lb: { enabled: false, input: defaultLoadBalancingInput() },
+  });
+  const lb: LbState =
+    lbChoice.attempt === state.attempt
+      ? lbChoice.lb
+      : {
+          enabled: state.values.loadBalancing !== null,
+          input:
+            state.values.loadBalancing ??
+            defaultLoadBalancingInput(state.values.upstream),
+        };
+  const formRef = useRef<HTMLFormElement>(null);
   // Only offered for https:// upstreams; a hidden switch submits "off".
-  const httpsUpstream = /^\s*https:\/\//i.test(upstream);
+  const httpsUpstream = /^\s*https:\/\//i.test(
+    lb.enabled ? (lb.input.backends[0]?.upstream ?? "") : upstream,
+  );
   const { t } = useI18n();
   const e = t.config.editor;
 
@@ -145,11 +190,62 @@ export function SiteEditor({
   const shown = (error: string | undefined) =>
     error === undefined ? undefined : translateCode(t, error);
 
-  function check(form: HTMLFormElement): SiteFieldErrors {
-    const result = validateSiteInput(siteFormValues(new FormData(form)), {
-      storedPassword,
-    });
+  /** The load balancing state is passed in: the hidden field may lag one render. */
+  function check(
+    form: HTMLFormElement,
+    current: LbState = lb,
+  ): SiteFieldErrors {
+    const result = validateSiteInput(
+      {
+        ...siteFormValues(new FormData(form)),
+        loadBalancing: current.enabled ? current.input : null,
+      },
+      { storedPassword },
+    );
     return result.ok ? {} : result.fieldErrors;
+  }
+
+  const isLbKey = (key: string) => key.startsWith("lb.");
+  /** New load balancing values: shown errors are re-checked (cleared or updated). */
+  function lbChanged(next: LbState) {
+    setLbChoice({ attempt: state.attempt, lb: next });
+    const form = formRef.current;
+    if (!form) return;
+    const errors = check(form, next);
+    const update: ClientErrors = {};
+    for (const key of [
+      ...Object.keys(state.fieldErrors ?? {}),
+      ...Object.keys(clientErrors),
+    ].filter(isLbKey) as LbFieldKey[]) {
+      if (errorFor(key)) update[key] = errors[key] ?? null;
+    }
+    if (!next.enabled) {
+      // Switched off: none of its errors apply.
+      for (const key of Object.keys(update)) update[key as LbFieldKey] = null;
+    }
+    mergeClientErrors(update);
+  }
+
+  function mergeClientErrors(update: ClientErrors) {
+    setClient((current) => ({
+      attempt: state.attempt,
+      errors: {
+        ...(current.attempt === state.attempt ? current.errors : {}),
+        ...update,
+      },
+    }));
+  }
+
+  /** Rows moved or removed: their errors are keyed by position. */
+  function lbRowsChanged() {
+    const stale: ClientErrors = {};
+    for (const key of [
+      ...Object.keys(state.fieldErrors ?? {}),
+      ...Object.keys(clientErrors),
+    ]) {
+      if (key.startsWith("lb.backends")) stale[key as LbFieldKey] = null;
+    }
+    mergeClientErrors(stale);
   }
 
   function setClientError(field: ErrorKey, message: string | null) {
@@ -179,6 +275,24 @@ export function SiteEditor({
     if (errorFor(field)) revalidate(field, input.form!);
   }
 
+  /** Row positions shift when a row is removed: their errors no longer fit. */
+  function clearRowErrors(list: (typeof ROW_LISTS)[number]) {
+    const stale: ClientErrors = {};
+    for (const key of [
+      ...Object.keys(state.fieldErrors ?? {}),
+      ...Object.keys(clientErrors),
+    ]) {
+      if (key.startsWith(list)) stale[key as ErrorKey] = null;
+    }
+    setClient((current) => ({
+      attempt: state.attempt,
+      errors: {
+        ...(current.attempt === state.attempt ? current.errors : {}),
+        ...stale,
+      },
+    }));
+  }
+
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     const errors = check(event.currentTarget);
     if (Object.keys(errors).length === 0) return;
@@ -186,18 +300,22 @@ export function SiteEditor({
     event.preventDefault();
     const all: ClientErrors = {};
     for (const field of FIELD_ORDER) all[field] = errors[field] ?? null;
-    // Row errors from the server are replaced by this check as well.
-    for (const key of Object.keys(state.fieldErrors ?? {})) {
-      if (key.startsWith("upstreamHeaders.")) all[key as ErrorKey] = null;
+    // Row and load balancing errors from the server are replaced as well.
+    for (const key of [
+      ...Object.keys(state.fieldErrors ?? {}),
+      ...Object.keys(clientErrors),
+    ]) {
+      if (rowListOf(key) || isLbKey(key)) {
+        all[key as ErrorKey] = null;
+      }
     }
-    const rows = headerErrorKeys(errors);
-    for (const key of rows) all[key] = errors[key];
+    for (const key of Object.keys(errors) as ErrorKey[]) {
+      if (rowListOf(key) || isLbKey(key)) all[key] = errors[key];
+    }
     setClient({ attempt: state.attempt, errors: all });
-    const first = FIELD_ORDER.flatMap((field): ErrorKey[] =>
-      field === "upstreamHeaders" ? [...rows, field] : [field],
-    ).find((field) => errors[field]);
-    event.currentTarget
-      .querySelector<HTMLElement>(`[data-field="${first}"]`)
+    // The first invalid field in page order.
+    [...event.currentTarget.querySelectorAll<HTMLElement>("[data-field]")]
+      .find((element) => errors[element.dataset.field as ErrorKey])
       ?.focus();
   }
 
@@ -221,6 +339,7 @@ export function SiteEditor({
       </div>
 
       <form
+        ref={formRef}
         action={formAction}
         onSubmit={onSubmit}
         noValidate
@@ -335,37 +454,70 @@ export function SiteEditor({
               />
             </>
           ) : (
-            <Field
-              id="upstream"
-              label="Upstream"
-              hint={e.upstreamHint}
-              error={shown(upstreamError)}
-            >
-              <Input
+            <div hidden={lb.enabled}>
+              <Field
                 id="upstream"
-                name="upstream"
-                data-field="upstream"
-                defaultValue={values.upstream}
-                placeholder="http://192.168.1.20:8080"
-                inputMode="url"
-                autoCapitalize="none"
-                autoCorrect="off"
-                autoComplete="off"
-                spellCheck={false}
-                maxLength={2048}
-                aria-invalid={upstreamError ? true : undefined}
-                aria-describedby={describedBy("upstream", upstreamError)}
-                onBlur={(event) => onBlur("upstream", event.currentTarget)}
-                onChange={(event) => {
-                  setUpstreamInput({
-                    attempt: state.attempt,
-                    upstream: event.currentTarget.value,
-                  });
-                  onChange("upstream", event.currentTarget);
-                }}
-                className="h-11 font-mono md:h-9"
-              />
-            </Field>
+                label="Upstream"
+                hint={e.upstreamHint}
+                error={shown(upstreamError)}
+              >
+                <Input
+                  id="upstream"
+                  name="upstream"
+                  data-field="upstream"
+                  defaultValue={values.upstream}
+                  placeholder="http://192.168.1.20:8080"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={2048}
+                  aria-invalid={upstreamError ? true : undefined}
+                  aria-describedby={describedBy("upstream", upstreamError)}
+                  onBlur={(event) => onBlur("upstream", event.currentTarget)}
+                  onChange={(event) => {
+                    setUpstreamInput({
+                      attempt: state.attempt,
+                      upstream: event.currentTarget.value,
+                    });
+                    onChange("upstream", event.currentTarget);
+                  }}
+                  className="h-11 font-mono md:h-9"
+                />
+              </Field>
+            </div>
+          )}
+
+          {kind === "redirect" ? null : (
+            <LoadBalancingFields
+              value={lb}
+              onChange={(next) =>
+                lbChanged(
+                  // Switched on with an empty first row: take the single upstream.
+                  next.enabled &&
+                    !lb.enabled &&
+                    !next.input.backends[0]?.upstream
+                    ? {
+                        ...next,
+                        input: {
+                          ...next.input,
+                          backends: next.input.backends.map((row, i) =>
+                            i === 0 ? { ...row, upstream } : row,
+                          ),
+                        },
+                      }
+                    : next,
+                )
+              }
+              onBlurField={(key) => {
+                if (formRef.current) {
+                  setClientError(key, check(formRef.current)[key] ?? null);
+                }
+              }}
+              onRowsChanged={lbRowsChanged}
+              errorFor={(key) => shown(errorFor(key))}
+            />
           )}
 
           {/* Hidden, not removed, for redirects: switching back keeps the rows. */}
@@ -376,24 +528,7 @@ export function SiteEditor({
             errorFor={(key) => shown(errorFor(key))}
             onBlur={onBlur}
             onChange={onChange}
-            onRowsChanged={() => {
-              const stale: ClientErrors = {};
-              for (const key of [
-                ...Object.keys(state.fieldErrors ?? {}),
-                ...Object.keys(clientErrors),
-              ]) {
-                if (key.startsWith("upstreamHeaders")) {
-                  stale[key as ErrorKey] = null;
-                }
-              }
-              setClient((current) => ({
-                attempt: state.attempt,
-                errors: {
-                  ...(current.attempt === state.attempt ? current.errors : {}),
-                  ...stale,
-                },
-              }));
-            }}
+            onRowsChanged={() => clearRowErrors("upstreamHeaders")}
           />
 
           {kind !== "redirect" && httpsUpstream ? (
@@ -485,6 +620,18 @@ export function SiteEditor({
               onChange={onChange}
             />
           )}
+
+          {/* Hidden for redirects like the headers: Caddy redirects before it limits. */}
+          <RateLimitFields
+            hidden={kind === "redirect"}
+            module={rateLimitModule}
+            initial={values.rateLimitRules}
+            listError={shown(errorFor("rateLimitRules"))}
+            errorFor={(key) => shown(errorFor(key))}
+            onBlur={onBlur}
+            onChange={onChange}
+            onRowsChanged={() => clearRowErrors("rateLimitRules")}
+          />
         </fieldset>
 
         <div className="flex flex-col-reverse gap-2 border-t pt-5 sm:flex-row sm:justify-end">
@@ -677,18 +824,8 @@ function BasicAuthFields({
   );
 }
 
-/** Row keys of header errors, in row order (name before value). */
-function headerErrorKeys(errors: SiteFieldErrors): HeaderFieldKey[] {
-  return (Object.keys(errors) as ErrorKey[])
-    .filter((key): key is HeaderFieldKey => key.startsWith("upstreamHeaders."))
-    .sort((a, b) => {
-      const [, rowA, partA] = a.split(".");
-      const [, rowB, partB] = b.split(".");
-      return (
-        Number(rowA) - Number(rowB) ||
-        (partA === "name" ? -1 : 1) - (partB === "name" ? -1 : 1)
-      );
-    });
+function rowListOf(key: string) {
+  return ROW_LISTS.find((list) => key.startsWith(`${list}.`));
 }
 
 interface HeaderRow {
@@ -884,6 +1021,289 @@ function UpstreamHeadersFields({
   );
 }
 
+interface RuleRow extends RateLimitRuleValues {
+  /** Stable React key; rows can be removed from the middle. */
+  rowKey: number;
+}
+
+const NEW_RULE: RateLimitRuleValues = {
+  name: "",
+  enabled: true,
+  path: "",
+  events: "100",
+  window: "1m",
+  key: "remote_ip",
+  keyName: "",
+};
+
+/**
+ * Rules of the optional `rate_limit` module, submitted as one value per row
+ * and field in DOM order. New rules need the module; existing ones stay
+ * editable without it, so they can be disabled or removed.
+ */
+function RateLimitFields({
+  hidden,
+  module,
+  initial,
+  listError,
+  errorFor,
+  onBlur,
+  onChange,
+  onRowsChanged,
+}: {
+  hidden: boolean;
+  module: RateLimitModuleStatus;
+  initial: RateLimitRuleValues[];
+  listError: string | undefined;
+  errorFor: (key: RateLimitFieldKey) => string | undefined;
+  onBlur: (key: RateLimitFieldKey, input: HTMLInputElement) => void;
+  onChange: (key: RateLimitFieldKey, input: HTMLInputElement) => void;
+  onRowsChanged: () => void;
+}) {
+  const { t } = useI18n();
+  const e = t.config.editor;
+  const [rows, setRows] = useState<RuleRow[]>(() =>
+    initial.map((rule, index) => ({ rowKey: index, ...rule })),
+  );
+  const [nextKey, setNextKey] = useState(initial.length);
+  const [added, setAdded] = useState<number | null>(null);
+
+  function update(rowKey: number, patch: Partial<RateLimitRuleValues>) {
+    setRows((current) =>
+      current.map((row) =>
+        row.rowKey === rowKey ? { ...row, ...patch } : row,
+      ),
+    );
+  }
+
+  return (
+    <div
+      hidden={hidden}
+      className="flex flex-col gap-4 rounded-2xl bg-band p-4"
+    >
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span
+            id="rateLimitRules-label"
+            className="inline-flex items-center gap-2 text-sm font-medium"
+          >
+            <Gauge aria-hidden className="size-4 text-muted-foreground" />
+            {e.rateLimit}
+          </span>
+          <Badge
+            variant={
+              module === "available"
+                ? "default"
+                : module === "missing"
+                  ? "ember"
+                  : "secondary"
+            }
+          >
+            {e.rateLimitModule[module]}
+          </Badge>
+        </div>
+        <p id="rateLimitRules-hint" className="text-xs text-muted-foreground">
+          {e.rateLimitHint}
+        </p>
+      </div>
+
+      {module === "available" ? null : (
+        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <Info aria-hidden className="mt-px size-3.5 shrink-0" />
+          {module === "missing" ? e.rateLimitMissing : e.rateLimitUnknown}
+        </p>
+      )}
+
+      {rows.length > 0 ? (
+        <ul
+          aria-labelledby="rateLimitRules-label"
+          className="flex flex-col gap-3"
+        >
+          {rows.map((row, index) => {
+            const at = (
+              field: "name" | "path" | "events" | "window" | "keyName",
+            ): RateLimitFieldKey => `rateLimitRules.${index}.${field}`;
+            const id = `rateLimitRule-${row.rowKey}`;
+            const named = row.key === "header" || row.key === "cookie";
+            const input = (
+              field: "name" | "path" | "events" | "window" | "keyName",
+              label: string,
+              props: ComponentProps<typeof Input>,
+            ) => {
+              const error = errorFor(at(field));
+              return (
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <Label htmlFor={`${id}-${field}`} className="text-xs">
+                    {label}
+                  </Label>
+                  <Input
+                    id={`${id}-${field}`}
+                    data-field={at(field)}
+                    value={row[field]}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={
+                      error ? `${id}-${field}-error` : undefined
+                    }
+                    onBlur={(event) => onBlur(at(field), event.currentTarget)}
+                    onChange={(event) => {
+                      update(row.rowKey, {
+                        [field]: event.currentTarget.value,
+                      } as Partial<RateLimitRuleValues>);
+                      onChange(at(field), event.currentTarget);
+                    }}
+                    className="h-11 font-mono md:h-9"
+                    {...props}
+                  />
+                  <FieldError id={`${id}-${field}-error`} error={error} />
+                </div>
+              );
+            };
+            return (
+              <li
+                key={row.rowKey}
+                className="flex flex-col gap-3 rounded-xl bg-card p-3 shadow-soft-sm"
+              >
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2">
+                  {input("name", e.ruleName, {
+                    name: "rateLimitName",
+                    placeholder: "api",
+                    maxLength: RATE_LIMIT_NAME_MAX_LENGTH,
+                    autoFocus: row.rowKey === added,
+                  })}
+                  <div className="flex flex-col items-center gap-1.5">
+                    <Label htmlFor={`${id}-enabled`} className="text-xs">
+                      {e.ruleEnabled}
+                    </Label>
+                    <input
+                      type="hidden"
+                      name="rateLimitEnabled"
+                      value={row.enabled ? "on" : "off"}
+                    />
+                    <Switch
+                      id={`${id}-enabled`}
+                      checked={row.enabled}
+                      onCheckedChange={(checked) =>
+                        update(row.rowKey, { enabled: checked })
+                      }
+                      className="mt-2"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={e.removeRule(index + 1)}
+                    title={e.removeRule(index + 1)}
+                    onClick={() => {
+                      setRows((current) =>
+                        current.filter((other) => other.rowKey !== row.rowKey),
+                      );
+                      onRowsChanged();
+                    }}
+                    className="mt-6 size-11 text-muted-foreground hover:text-destructive md:size-9"
+                  >
+                    <X aria-hidden />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)]">
+                  {input("events", e.ruleEvents, {
+                    name: "rateLimitEvents",
+                    inputMode: "numeric",
+                    placeholder: "100",
+                    maxLength: 6,
+                  })}
+                  {input("window", e.ruleWindow, {
+                    name: "rateLimitWindow",
+                    placeholder: "1m",
+                    maxLength: 8,
+                    title: e.ruleWindowHint,
+                  })}
+                  <div className="col-span-2 sm:col-span-1">
+                    {input("path", e.rulePath, {
+                      name: "rateLimitPath",
+                      placeholder: "/api/*",
+                      maxLength: RATE_LIMIT_PATH_MAX_LENGTH,
+                    })}
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <Label htmlFor={`${id}-key`} className="text-xs">
+                      {e.ruleKey}
+                    </Label>
+                    <select
+                      id={`${id}-key`}
+                      name="rateLimitKey"
+                      value={row.key}
+                      aria-describedby={`${id}-key-hint`}
+                      onChange={(event) =>
+                        update(row.rowKey, { key: event.currentTarget.value })
+                      }
+                      className="field h-11 max-w-full min-w-0 px-3.5 text-sm md:h-9"
+                    >
+                      {RATE_LIMIT_KEYS.map((key) => (
+                        <option key={key} value={key}>
+                          {e.ruleKeys[key].title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {named ? (
+                    input("keyName", e.ruleKeyName[row.key as "header"], {
+                      name: "rateLimitKeyName",
+                      placeholder:
+                        row.key === "header" ? "X-Api-Key" : "session",
+                      maxLength: RATE_LIMIT_KEY_NAME_MAX_LENGTH,
+                    })
+                  ) : (
+                    <input type="hidden" name="rateLimitKeyName" value="" />
+                  )}
+                </div>
+                <p
+                  id={`${id}-key-hint`}
+                  className="flex items-start gap-1.5 text-xs text-muted-foreground"
+                >
+                  <Info aria-hidden className="mt-px size-3.5 shrink-0" />
+                  {e.ruleKeys[row.key as (typeof RATE_LIMIT_KEYS)[number]]
+                    ?.hint ?? ""}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      {rows.length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {e.ruleWindow}: {e.ruleWindowHint} · {e.rulePath}: {e.rulePathHint}
+        </p>
+      ) : null}
+
+      <FieldError id="rateLimitRules-error" error={listError} />
+
+      <Button
+        type="button"
+        variant="outline"
+        data-field="rateLimitRules"
+        disabled={module !== "available" || rows.length >= RATE_LIMIT_RULES_MAX}
+        onClick={() => {
+          setRows((current) => [...current, { rowKey: nextKey, ...NEW_RULE }]);
+          setAdded(nextKey);
+          setNextKey(nextKey + 1);
+        }}
+        className="h-11 w-fit md:h-9"
+      >
+        <Plus aria-hidden data-icon="inline-start" />
+        {e.addRule}
+      </Button>
+    </div>
+  );
+}
+
 /** Radio cards (TLS mode, kind, redirect code); the first one takes the focus on errors. */
 function ChoiceGroup({
   name,
@@ -968,19 +1388,5 @@ function Field({
         {hint}
       </p>
     </div>
-  );
-}
-
-function FieldError({ id, error }: { id: string; error: string | undefined }) {
-  if (!error) return null;
-  return (
-    <p
-      id={id}
-      className="flex items-start gap-1.5 text-sm text-destructive"
-      role="alert"
-    >
-      <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-      {error}
-    </p>
   );
 }

@@ -75,7 +75,7 @@ export function BottomNav({ className }: { className?: string }) {
         className,
       )}
     >
-      <ul className="grid grid-cols-4 gap-1">
+      <ul className="grid grid-cols-5 gap-1">
         {primaryNavItems.map((item) => {
           const active = isNavItemActive(item, pathname);
           return (
@@ -94,7 +94,9 @@ export function BottomNav({ className }: { className?: string }) {
                   strokeWidth={active ? 1.75 : 1.5}
                   aria-hidden
                 />
-                <span>{t.nav[item.key].short}</span>
+                <span className="max-w-full truncate px-0.5">
+                  {t.nav[item.key].short}
+                </span>
               </Link>
             </li>
           );

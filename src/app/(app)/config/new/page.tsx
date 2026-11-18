@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { getI18n } from "@/i18n/server";
 import { requireAccess } from "@/server/auth/session";
+import { checkRateLimitModule } from "@/server/caddy/admin";
 import { createSiteAction } from "@/server/caddy/site-actions";
 import { emptySiteFormValues } from "@/server/caddy/site-form";
 
@@ -20,6 +21,7 @@ export default async function NewSitePage() {
       initialValues={emptySiteFormValues}
       title={t.config.editor.newTitle}
       submitLabel={t.config.editor.newSubmit}
+      rateLimitModule={await checkRateLimitModule()}
     />
   );
 }

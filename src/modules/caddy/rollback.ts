@@ -17,6 +17,8 @@ const snapshotSchema = z.array(
     hostname: z.string(),
     kind: z.string().optional(),
     upstream: z.string().nullable(),
+    /** Checked by the site contract below. */
+    loadBalancing: z.unknown().optional(),
     upstreamSkipTlsVerify: z.boolean().optional(),
     upstreamHeaders: z
       .array(z.object({ name: z.string(), value: z.string() }))
@@ -27,6 +29,8 @@ const snapshotSchema = z.array(
     enabled: z.boolean(),
     basicAuthUsername: z.string().nullable().optional(),
     basicAuthHash: z.string().nullable().optional(),
+    /** Checked by the domain contract below. */
+    rateLimitRules: z.array(z.unknown()).optional(),
     createdAt: z.iso.datetime().optional(),
     updatedAt: z.string(),
   }),

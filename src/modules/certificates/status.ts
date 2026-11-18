@@ -105,3 +105,33 @@ export function summarize(
   }
   return summary;
 }
+
+/** Host names per status, for the status distribution. */
+export function countByStatus(
+  views: readonly CertificateView[],
+): Record<CertificateStatus, number> {
+  const counts = Object.fromEntries(
+    CERTIFICATE_STATUSES.map((status) => [status, 0]),
+  ) as Record<CertificateStatus, number>;
+  for (const view of views) counts[view.status]++;
+  return counts;
+}
+
+export type DatedCertificateView = CertificateView & {
+  daysLeft: number;
+  check: CertificateCheck & { validTo: Date };
+};
+
+/** Certificates with a known end date, soonest expiry first. */
+export function byExpiry(
+  views: readonly CertificateView[],
+): DatedCertificateView[] {
+  return views
+    .filter(
+      (view): view is DatedCertificateView =>
+        view.daysLeft !== null && view.check?.validTo != null,
+    )
+    .sort(
+      (a, b) => a.daysLeft - b.daysLeft || a.hostname.localeCompare(b.hostname),
+    );
+}

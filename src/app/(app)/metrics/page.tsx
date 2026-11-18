@@ -8,10 +8,14 @@ import { MetricsFilters } from "@/components/metrics/metrics-filters";
 import { RequestsChart } from "@/components/metrics/requests-chart";
 import { StatTiles } from "@/components/metrics/stat-tiles";
 import { StatusCodes } from "@/components/metrics/status-codes";
+import { UpstreamDistribution } from "@/components/metrics/upstream-distribution";
 import { getI18n } from "@/i18n/server";
 import { normalizeHost } from "@/modules/access-log/parser";
 import { RANGES } from "@/modules/access-log/queries";
-import { loadTrafficMetrics } from "@/server/access-log/queries";
+import {
+  loadTrafficMetrics,
+  loadUpstreamDistribution,
+} from "@/server/access-log/queries";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.metrics.title };
@@ -24,9 +28,11 @@ export default async function MetricsPage({
   const range = RANGES.find((r) => r === params.range) ?? "24h";
   const host =
     typeof params.host === "string" ? normalizeHost(params.host) : null;
-  const [{ metrics, hosts }, { locale, t }] = await Promise.all([
+  const [{ metrics, hosts }, { locale, t }, distribution] = await Promise.all([
     loadTrafficMetrics(range, host ?? undefined),
     getI18n(),
+    // Per upstream only for one host: shares across hosts mean nothing.
+    host ? loadUpstreamDistribution(range, host) : null,
   ]);
 
   const buckets = chartBuckets(metrics, locale, t);
@@ -51,6 +57,9 @@ export default async function MetricsPage({
             }
             buckets={buckets}
           />
+          {distribution ? (
+            <UpstreamDistribution distribution={distribution} />
+          ) : null}
           <StatusCodes
             metrics={metrics}
             labels={buckets.map((bucket) => bucket.label)}

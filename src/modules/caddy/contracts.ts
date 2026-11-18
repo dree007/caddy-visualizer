@@ -8,6 +8,12 @@ import {
   parseBasicAuthUsername,
 } from "./basic-auth";
 import { parseSiteHostname } from "./hostname";
+import {
+  checkLoadBalancing,
+  type LbFieldKey,
+  type LoadBalancing,
+  storedLoadBalancingSchema,
+} from "./load-balancing";
 import type { ParseResult } from "./parse-result";
 import {
   parseRedirectCode,
@@ -17,6 +23,18 @@ import {
   SITE_KINDS,
   type SiteKind,
 } from "./redirect";
+import {
+  parseRuleEvents,
+  parseRuleKeyName,
+  parseRuleName,
+  parseRulePath,
+  parseRuleWindow,
+  RATE_LIMIT_EVENTS_MAX,
+  RATE_LIMIT_KEYS,
+  RATE_LIMIT_RULES_MAX,
+  RATE_LIMIT_WINDOW_MAX_SECONDS,
+  type RateLimitRule,
+} from "./rate-limit";
 import { TLS_MODES } from "./tls";
 import { formatUpstream, parseUpstream } from "./upstream";
 import {
@@ -60,6 +78,11 @@ export const siteInputSchema = z.object({
   ...siteFields,
   /** Checked per kind in `validateSiteInput`. */
   upstream: z.unknown().optional(),
+  /**
+   * Proxies only: null/absent = the single `upstream`; otherwise the form's
+   * load balancing input, checked in `validateSiteInput`.
+   */
+  loadBalancing: z.unknown().optional(),
   upstreamSkipTlsVerify: z
     .boolean({ error: code("validation.invalid") })
     .default(false),
@@ -73,6 +96,21 @@ export const siteInputSchema = z.object({
   redirectCode: z
     .union([z.string(), z.number()], { error: code("redirect.code") })
     .default(""),
+  /** Rate limit rules as entered (window as `30s`/`1m`/`2h`); checked per row. */
+  rateLimitRules: z
+    .array(
+      z.object({
+        name: z.string(),
+        enabled: z.boolean(),
+        path: z.string(),
+        events: z.union([z.string(), z.number()]),
+        window: z.string(),
+        key: z.string(),
+        keyName: z.string(),
+      }),
+      { error: code("validation.invalid") },
+    )
+    .default([]),
   basicAuth: z.boolean({ error: code("validation.invalid") }).default(false),
   basicAuthUsername: z
     .string({ error: code("validation.invalid") })
@@ -86,8 +124,11 @@ export type SiteInput = z.input<typeof siteInputSchema>;
 export type SiteField = keyof SiteInput;
 /** Error of one header row, e.g. `upstreamHeaders.2.name`. */
 export type HeaderFieldKey = `upstreamHeaders.${number}.${"name" | "value"}`;
+/** Error of one rate limit rule, e.g. `rateLimitRules.0.window`. */
+export type RateLimitFieldKey =
+  `rateLimitRules.${number}.${"name" | "path" | "events" | "window" | "keyName"}`;
 export type SiteFieldErrors = Partial<
-  Record<SiteField | HeaderFieldKey, string>
+  Record<SiteField | HeaderFieldKey | RateLimitFieldKey | LbFieldKey, string>
 >;
 
 export interface ValidSiteInput {
@@ -95,8 +136,10 @@ export interface ValidSiteInput {
   tls: (typeof TLS_MODES)[number];
   enabled: boolean;
   kind: SiteKind;
-  /** Set for proxies only. */
+  /** Set for proxies only; with load balancing the first backend. */
   upstream: string | null;
+  /** Proxies with several upstreams only. */
+  loadBalancing: LoadBalancing | null;
   /** Proxies to an `https://` upstream only. */
   upstreamSkipTlsVerify: boolean;
   /** Proxies only, in the entered order; empty for redirects. */
@@ -105,6 +148,8 @@ export interface ValidSiteInput {
   redirect: { target: string; code: RedirectCode } | null;
   /** `password: null` keeps the stored hash. */
   basicAuth: { username: string; password: string | null } | null;
+  /** Proxies only, in the entered order; disabled rules are kept but not generated. */
+  rateLimitRules: RateLimitRule[];
 }
 
 export type SiteValidationResult =
@@ -142,14 +187,22 @@ export function validateSiteInput(
   const raw = (typeof input === "object" && input !== null ? input : {}) as {
     kind?: unknown;
     upstream?: unknown;
+    loadBalancing?: unknown;
   };
   const kind = siteFields.kind.safeParse(raw.kind);
   let upstream: string | null = null;
+  let loadBalancing: LoadBalancing | null = null;
   let redirect: ValidSiteInput["redirect"] = null;
   if (kind.success && kind.data === "proxy") {
-    const parsedUpstream = upstreamField.safeParse(raw.upstream);
-    if (parsedUpstream.success) upstream = parsedUpstream.data;
-    else fieldErrors.upstream ??= parsedUpstream.error.issues[0]!.message;
+    if (raw.loadBalancing !== undefined && raw.loadBalancing !== null) {
+      const lb = checkLoadBalancing(raw.loadBalancing, fieldErrors);
+      loadBalancing = lb.value;
+      upstream = lb.upstream;
+    } else {
+      const parsedUpstream = upstreamField.safeParse(raw.upstream);
+      if (parsedUpstream.success) upstream = parsedUpstream.data;
+      else fieldErrors.upstream ??= parsedUpstream.error.issues[0]!.message;
+    }
   }
   const upstreamSkipTlsVerify =
     result.success &&
@@ -175,6 +228,12 @@ export function validateSiteInput(
       redirect = { target: target.value, code: status.value };
     }
   }
+
+  // Caddy runs `redir` before `rate_limit`: a redirect could not be limited.
+  const rateLimitRules =
+    kind.success && kind.data === "proxy" && result.success
+      ? checkRateLimitRules(result.data.rateLimitRules, fieldErrors)
+      : [];
 
   let basicAuth: ValidSiteInput["basicAuth"] = null;
   const auth = basicAuthFields.safeParse(input);
@@ -214,10 +273,12 @@ export function validateSiteInput(
         enabled,
         kind,
         upstream,
+        loadBalancing,
         upstreamSkipTlsVerify,
         upstreamHeaders,
         redirect,
         basicAuth,
+        rateLimitRules,
       },
     };
   }
@@ -262,6 +323,99 @@ function checkUpstreamHeaders(
   return headers;
 }
 
+/** Validates the rule rows; errors per row (`rateLimitRules.<row>.<field>`). */
+function checkRateLimitRules(
+  rows: readonly {
+    name: string;
+    enabled: boolean;
+    path: string;
+    events: string | number;
+    window: string;
+    key: string;
+    keyName: string;
+  }[],
+  fieldErrors: SiteFieldErrors,
+): RateLimitRule[] {
+  const rules: RateLimitRule[] = [];
+  const seen = new Set<string>();
+  rows.forEach((row, index) => {
+    const at = (field: "name" | "path" | "events" | "window" | "keyName") =>
+      `rateLimitRules.${index}.${field}` as const;
+    const name = parseRuleName(row.name);
+    const path = parseRulePath(row.path);
+    const events = parseRuleEvents(row.events);
+    const window = parseRuleWindow(row.window);
+    const key = z.enum(RATE_LIMIT_KEYS).safeParse(row.key);
+    const named =
+      key.success && (key.data === "header" || key.data === "cookie");
+    const keyName = named ? parseRuleKeyName(row.keyName) : null;
+    if (!name.ok) fieldErrors[at("name")] = name.message;
+    else if (seen.has(name.value)) {
+      fieldErrors[at("name")] = code("rateLimit.nameDuplicate", {
+        name: name.value,
+      });
+    }
+    if (!path.ok) fieldErrors[at("path")] = path.message;
+    if (!events.ok) fieldErrors[at("events")] = events.message;
+    if (!window.ok) fieldErrors[at("window")] = window.message;
+    if (!key.success) fieldErrors.rateLimitRules ??= code("validation.invalid");
+    if (keyName && !keyName.ok) fieldErrors[at("keyName")] = keyName.message;
+    if (name.ok) seen.add(name.value);
+    if (
+      name.ok &&
+      path.ok &&
+      events.ok &&
+      window.ok &&
+      key.success &&
+      (keyName === null || keyName.ok)
+    ) {
+      rules.push({
+        name: name.value,
+        enabled: row.enabled,
+        path: path.value,
+        events: events.value,
+        windowSeconds: window.value,
+        key: key.data,
+        keyName: keyName?.value ?? null,
+      });
+    }
+  });
+  if (rows.length > RATE_LIMIT_RULES_MAX) {
+    fieldErrors.rateLimitRules = code("rateLimit.tooMany", {
+      max: RATE_LIMIT_RULES_MAX,
+    });
+  }
+  return rules;
+}
+
+/** Stored rules: already valid and unique by name. */
+const rateLimitRulesField = z
+  .array(
+    z
+      .object({
+        name: domainString(parseRuleName),
+        enabled: z.boolean(),
+        path: domainString(parseRulePath).nullable(),
+        events: z.number().int().min(1).max(RATE_LIMIT_EVENTS_MAX),
+        windowSeconds: z
+          .number()
+          .int()
+          .min(1)
+          .max(RATE_LIMIT_WINDOW_MAX_SECONDS),
+        key: z.enum(RATE_LIMIT_KEYS),
+        keyName: domainString(parseRuleKeyName).nullable(),
+      })
+      .refine(
+        (rule) =>
+          (rule.key === "header" || rule.key === "cookie") ===
+          (rule.keyName !== null),
+      ),
+  )
+  .max(RATE_LIMIT_RULES_MAX)
+  .refine(
+    (rules) => new Set(rules.map((rule) => rule.name)).size === rules.length,
+  );
+
 /** Stored headers: already valid, unique and in order. */
 const upstreamHeadersField = z
   .array(
@@ -280,13 +434,14 @@ const upstreamHeadersField = z
 /**
  * A site as stored and as the generator gets it: user name and bcrypt hash
  * instead of a password. Also checks rows and revision snapshots, which may be
- * older than redirects, basic auth or headers (missing fields = proxy without
- * auth or headers).
+ * older than redirects, basic auth, headers or rate limits (missing fields =
+ * proxy without auth, headers or rate limits).
  */
 export const siteConfigSchema = z
   .object({
     ...siteFields,
     upstream: upstreamField.nullable().default(null),
+    loadBalancing: storedLoadBalancingSchema.nullable().default(null),
     upstreamSkipTlsVerify: z.boolean().default(false),
     upstreamHeaders: upstreamHeadersField.default([]),
     redirectTarget: domainString(parseRedirectTarget).nullable().default(null),
@@ -299,6 +454,7 @@ export const siteConfigSchema = z
       .nullable()
       .default(null),
     basicAuthHash: z.string().refine(isBcryptHash).nullable().default(null),
+    rateLimitRules: rateLimitRulesField.default([]),
   })
   .refine(
     (site) =>
@@ -317,6 +473,16 @@ export const siteConfigSchema = z
   .refine(
     (site) => site.kind === "proxy" || site.upstreamHeaders.length === 0,
     { path: ["upstreamHeaders"] },
+  )
+  .refine((site) => site.kind === "proxy" || site.rateLimitRules.length === 0, {
+    path: ["rateLimitRules"],
+  })
+  .refine(
+    (site) =>
+      site.loadBalancing === null ||
+      (site.kind === "proxy" &&
+        site.upstream === site.loadBalancing.backends[0]?.upstream),
+    { path: ["loadBalancing"] },
   )
   .refine(
     (site) =>
