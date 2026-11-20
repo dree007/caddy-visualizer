@@ -16,14 +16,15 @@ import {
   loadTrafficMetrics,
   loadUpstreamDistribution,
 } from "@/server/access-log/queries";
+import { getDesign } from "@/server/design";
+
+import ClassicMetricsPage from "./classic/classic-page";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.metrics.title };
 }
 
-export default async function MetricsPage({
-  searchParams,
-}: PageProps<"/metrics">) {
+async function SchematicMetricsPage({ searchParams }: PageProps<"/metrics">) {
   const params = await searchParams;
   const range = RANGES.find((r) => r === params.range) ?? "24h";
   const host =
@@ -38,7 +39,7 @@ export default async function MetricsPage({
   const buckets = chartBuckets(metrics, locale, t);
 
   return (
-    <div className="flex flex-col gap-4 md:gap-5">
+    <div className="flex flex-col gap-5 md:gap-7">
       <MetricsFilters range={range} host={host} hosts={hosts} />
       {hosts.length === 0 ? (
         <EmptyState
@@ -73,4 +74,10 @@ export default async function MetricsPage({
       )}
     </div>
   );
+}
+
+/** "Klassisch" is the page as on main; "Schaltplan" is the redesign. */
+export default async function MetricsPage(props: PageProps<"/metrics">) {
+  if ((await getDesign()) === "classic") return ClassicMetricsPage(props);
+  return SchematicMetricsPage(props);
 }

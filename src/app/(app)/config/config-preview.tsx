@@ -1,4 +1,4 @@
-import { CircleAlert, FileCode } from "lucide-react";
+import { CircleAlert } from "lucide-react";
 
 import { CaddyfileCode } from "@/components/caddyfile-code";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -11,7 +11,8 @@ import { SYNC_TONES, TONE_CLASSES } from "./sync-labels";
 
 /**
  * Read-only view of `sites.caddy` exactly as the generator produces it, with
- * syntax highlighting (only colors; the text itself is never changed).
+ * syntax highlighting (only colors; the text itself is never changed). Lives
+ * inside the "Vorgemerkt" panel.
  */
 export function ConfigPreview({
   preview,
@@ -30,20 +31,12 @@ export function ConfigPreview({
     tone: SYNC_TONES[sync.state],
   };
   return (
-    <section
-      aria-labelledby="preview-heading"
-      className="surface flex flex-col gap-3 p-5 md:p-7"
-    >
-      <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-stone text-foreground shadow-pressed">
-          <FileCode aria-hidden className="size-4" />
-        </span>
-        <div className="min-w-0">
-          <h2 id="preview-heading" className="heading">
-            {p.heading}
-          </h2>
-          <p className="text-sm text-muted-foreground">{p.text}</p>
-        </div>
+    <section aria-labelledby="preview-heading" className="flex flex-col gap-3">
+      <div className="min-w-0">
+        <h3 id="preview-heading" className="font-medium">
+          {p.heading}
+        </h3>
+        <p className="text-sm text-muted-foreground">{p.text}</p>
       </div>
 
       {preview.ok ? (
@@ -51,7 +44,7 @@ export function ConfigPreview({
           <pre
             aria-label={p.ariaContent}
             tabIndex={0}
-            className="code-well overflow-x-auto p-4 [tab-size:4] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none md:p-4 md:text-[0.8125rem]"
+            className="code-well max-h-96 overflow-auto p-4 [tab-size:4] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none md:text-[0.8125rem]"
           >
             <code>
               <CaddyfileCode text={preview.generated.content} />

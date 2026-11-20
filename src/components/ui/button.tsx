@@ -4,20 +4,20 @@ import { cn } from "cn";
 import { Slot } from "radix-ui";
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-full border border-transparent bg-clip-padding text-sm font-medium tracking-[0.01em] whitespace-nowrap transition-[color,background-color,box-shadow,transform] duration-200 outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:ring-2 aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-full border border-transparent bg-clip-padding text-sm font-medium tracking-[0.01em] whitespace-nowrap schematic:rounded-lg schematic:font-semibold schematic:tracking-normal transition-[color,background-color,box-shadow,transform] duration-200 outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:ring-2 aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-ink hover:bg-primary/90 active:shadow-pressed",
+          "bg-primary text-primary-foreground shadow-ink hover:bg-primary/90 active:shadow-pressed schematic:shadow-none schematic:active:shadow-none",
         outline:
-          "bg-card text-foreground shadow-soft-sm hover:bg-accent aria-expanded:bg-accent active:shadow-pressed",
+          "bg-card text-foreground shadow-soft-sm hover:bg-accent aria-expanded:bg-accent active:shadow-pressed schematic:border-input schematic:shadow-none schematic:active:shadow-none",
         secondary:
-          "bg-card text-foreground shadow-soft-sm hover:bg-accent aria-expanded:bg-accent active:shadow-pressed",
+          "bg-card text-foreground shadow-soft-sm hover:bg-accent aria-expanded:bg-accent active:shadow-pressed schematic:border-border schematic:shadow-none schematic:active:shadow-none",
         ghost:
           "text-muted-foreground hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/15 focus-visible:ring-destructive/60 dark:bg-destructive/15 dark:hover:bg-destructive/25",
+          "bg-status-error-soft text-destructive hover:bg-status-error-soft/70 focus-visible:ring-destructive/60 ",
         link: "text-violet-ink underline-offset-4 hover:underline",
       },
       size: {

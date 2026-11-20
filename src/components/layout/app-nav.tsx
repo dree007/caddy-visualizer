@@ -11,14 +11,17 @@ import {
 import { useI18n } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
-/** Segmented pill control in the top bar, from `md` upwards. */
+/**
+ * Top bar sections from `md` upwards: a segmented pill control ("Klassisch")
+ * or underlined links ("Schaltplan").
+ */
 export function TopNav({ className }: { className?: string }) {
   const pathname = usePathname();
   const { t } = useI18n();
 
   return (
     <nav aria-label={t.nav.main} className={className}>
-      <ul className="surface-pressed flex items-center gap-0.5 p-1">
+      <ul className="surface-pressed flex items-center gap-0.5 p-1 schematic:h-full schematic:items-stretch schematic:rounded-none schematic:bg-transparent schematic:p-0">
         {navItems.map((item) => {
           const active = isNavItemActive(item, pathname);
           return (
@@ -34,7 +37,9 @@ export function TopNav({ className }: { className?: string }) {
                 className={cn(
                   "flex h-9 items-center gap-2 rounded-full px-3.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-[color,background-color,box-shadow] duration-200 lg:px-4",
                   "outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
-                  active && "bg-card text-foreground shadow-soft-sm",
+                  "schematic:h-full schematic:min-h-16 schematic:rounded-none schematic:border-b-[3px] schematic:border-transparent schematic:px-3 schematic:transition-colors schematic:hover:text-violet-ink schematic:focus-visible:ring-inset lg:schematic:px-3",
+                  active &&
+                    "bg-card text-foreground shadow-soft-sm schematic:border-violet schematic:bg-transparent schematic:font-semibold schematic:shadow-none",
                 )}
               >
                 <item.icon
@@ -71,7 +76,7 @@ export function BottomNav({ className }: { className?: string }) {
     <nav
       aria-label={t.nav.main}
       className={cn(
-        "rounded-full bg-card/90 p-1.5 shadow-soft-lg backdrop-blur-md",
+        "rounded-full bg-card/90 p-1.5 shadow-soft-lg backdrop-blur-md schematic:rounded-xl schematic:border schematic:border-border schematic:bg-card/95",
         className,
       )}
     >
@@ -84,9 +89,10 @@ export function BottomNav({ className }: { className?: string }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex h-14 flex-col items-center justify-center gap-0.5 rounded-full text-[0.6875rem] font-medium",
+                  "flex h-14 flex-col items-center justify-center gap-0.5 rounded-full text-[0.6875rem] font-medium schematic:rounded-lg",
                   "text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                  active && "bg-stone text-foreground shadow-pressed",
+                  active &&
+                    "bg-stone text-foreground shadow-pressed schematic:font-semibold schematic:text-violet-ink schematic:shadow-none",
                 )}
               >
                 <item.icon

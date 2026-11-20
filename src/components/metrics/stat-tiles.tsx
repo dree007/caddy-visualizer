@@ -5,6 +5,7 @@ import {
   formatMs,
   formatPercent,
 } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { Metrics } from "@/modules/access-log/queries";
 import { rateOf, type Trend, trendOf } from "@/modules/access-log/trends";
 
@@ -65,17 +66,24 @@ export async function StatTiles({
     },
   ];
   return (
-    <dl className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-      {tiles.map((tile) => (
+    /* A plain ruled row, as on the reference dashboard: no tiles, no shadows. */
+    <dl className="grid grid-cols-2 border-t-2 border-b border-t-foreground border-b-border md:grid-cols-4">
+      {tiles.map((tile, index) => (
         <div
           key={tile.label}
-          className="surface-band flex min-w-0 flex-col gap-2 p-5 shadow-[inset_0_1px_0_rgb(255_255_255/0.6)] md:p-6 dark:shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]"
+          className={cn(
+            "flex min-w-0 flex-col gap-1 py-4 pr-4 md:px-5 md:pr-5",
+            index % 2 === 0 && "border-r border-border",
+            index < 2 && "border-b border-border md:border-b-0",
+            index === 3 && "md:pr-0",
+            index === 0 && "md:pl-0",
+          )}
         >
-          <dt className="eyebrow">{tile.label}</dt>
-          <dd className="font-display text-[2rem] leading-none font-light tracking-[-0.02em] tabular-nums md:text-[2.5rem]">
+          <dt className="text-sm text-muted-foreground">{tile.label}</dt>
+          <dd className="font-display text-[2rem] leading-none font-semibold tracking-[-0.02em] tabular-nums">
             {tile.value}
           </dd>
-          <dd className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground tabular-nums">
+          <dd className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs text-muted-foreground tabular-nums">
             <TrendBadge
               trend={tile.trend}
               polarity={tile.polarity}

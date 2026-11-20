@@ -13,7 +13,7 @@ import {
 /** Chart color per status; the status is always named in text as well. */
 const COLORS: Record<CertificateStatus, string> = {
   valid: "var(--viz-good)",
-  expiring: "var(--viz-warning)",
+  expiring: "var(--ember)",
   expired: "var(--viz-critical)",
   invalid: "var(--viz-critical)",
   unreachable: "var(--viz-critical)",
@@ -45,14 +45,17 @@ export function CertificateStatusDistribution({
       <h2 id="cert-status-heading" className="heading">
         {c.charts.statusTitle}
       </h2>
-      <div aria-hidden className="flex h-3 gap-[2px]">
+      <div
+        aria-hidden
+        className="flex h-3 overflow-hidden rounded-full bg-stone"
+      >
         {present.map((status) => (
           <span
             key={status}
-            className="h-full rounded-full"
+            className="h-full"
             style={{
               width: `${(counts[status] / views.length) * 100}%`,
-              minWidth: 6,
+              minWidth: 4,
               background: COLORS[status],
             }}
           />
@@ -123,7 +126,7 @@ export function CertificateExpiryChart({
             {rows.map((view) => (
               <li key={view.hostname} className="flex flex-col gap-1.5">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
-                  <span className="min-w-0 [overflow-wrap:anywhere]">
+                  <span className="mono min-w-0 truncate font-medium">
                     {view.hostname}
                   </span>
                   <span className="text-xs text-muted-foreground tabular-nums">
@@ -135,11 +138,11 @@ export function CertificateExpiryChart({
                 </div>
                 <div
                   aria-hidden
-                  className="relative h-2 rounded-full bg-muted"
+                  className="relative h-1.5 rounded-sm bg-muted"
                   data-status={view.status}
                 >
                   <span
-                    className="absolute inset-y-0 left-0 rounded-full"
+                    className="absolute inset-y-0 left-0 rounded-sm"
                     style={{
                       width: at(view.daysLeft),
                       minWidth: 4,

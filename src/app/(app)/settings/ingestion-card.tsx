@@ -1,5 +1,3 @@
-import { ScrollText } from "lucide-react";
-
 import { translateCode } from "@/i18n";
 import { getI18n } from "@/i18n/server";
 import { formatCount, formatDateTime } from "@/lib/format";
@@ -15,20 +13,15 @@ export async function IngestionCard() {
       aria-labelledby="ingestion-heading"
       className="surface flex flex-col gap-3 p-5 md:p-7"
     >
-      <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-stone text-foreground shadow-pressed">
-          <ScrollText aria-hidden className="size-4" />
-        </span>
-        <div className="min-w-0">
-          <h2 id="ingestion-heading" className="heading">
-            {g.heading}
-          </h2>
-          <p className="font-mono text-xs [overflow-wrap:anywhere] text-muted-foreground">
-            {path}
-          </p>
-        </div>
+      <div className="flex min-w-0 flex-col gap-1">
+        <h2 id="ingestion-heading" className="heading">
+          {g.heading}
+        </h2>
+        <p className="mono min-w-0 text-xs break-all text-muted-foreground">
+          {path}
+        </p>
       </div>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+      <dl className="grid grid-cols-1 gap-x-4 gap-y-1.5 border-t border-border pt-3 text-sm sm:grid-cols-[auto_1fr]">
         <dt className="text-muted-foreground">{g.status}</dt>
         <dd
           className={

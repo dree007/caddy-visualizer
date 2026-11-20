@@ -11,8 +11,9 @@ import { BottomNav, TopNav } from "./app-nav";
 import { PageHeader } from "./page-title";
 
 /**
- * Mobile-first application frame:
- * - a floating pill bar on top (brand, sections from `md`, account)
+ * Mobile-first application frame, styled per design (`data-design` on <html>):
+ * - "Klassisch": a floating pill bar on top (brand, sections from `md`, account)
+ * - "Schaltplan": a flat white top bar (brand, underlined sections from `md`, account)
  * - phones: a floating tab bar at the bottom, secondary sections in the account menu
  */
 export function AppShell({
@@ -28,10 +29,10 @@ export function AppShell({
 }) {
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-30 px-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] md:px-6">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 rounded-full bg-card/85 pr-2 pl-3 shadow-soft-md backdrop-blur-md md:pl-4">
+      <header className="sticky top-0 z-30 px-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] md:px-6 schematic:border-b schematic:border-border schematic:bg-card schematic:pb-3">
+        <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 rounded-full bg-card/85 pr-2 pl-3 shadow-soft-md backdrop-blur-md md:pl-4 schematic:rounded-none schematic:bg-transparent schematic:shadow-none schematic:backdrop-blur-none schematic:md:gap-8">
           <Brand instanceLabel={instanceLabel} />
-          <TopNav className="mx-auto hidden md:flex" />
+          <TopNav className="mx-auto hidden md:flex schematic:mx-0 schematic:-mb-3 schematic:self-stretch schematic:md:flex-1" />
           <div className="ml-auto md:ml-0">
             <AccountMenu username={username} />
           </div>
@@ -41,7 +42,7 @@ export function AppShell({
       {/* Bottom padding keeps content clear of the floating tab bar on phones. */}
       <main
         id="main"
-        className="mx-auto w-full max-w-6xl px-4 pt-8 pb-[calc(7rem+env(safe-area-inset-bottom))] md:px-6 md:pt-12 md:pb-16"
+        className="mx-auto w-full max-w-6xl px-4 pt-8 pb-[calc(7rem+env(safe-area-inset-bottom))] md:px-6 md:pt-12 md:pb-16 schematic:md:pt-8"
       >
         <PageHeader />
         {children}
@@ -52,6 +53,10 @@ export function AppShell({
   );
 }
 
+/**
+ * The logo is the same file, size and position in every design: the header
+ * keeps the geometry of `main` (same inset and height), only its look changes.
+ */
 export function BrandMark({ className }: { className?: string }) {
   return (
     <Image
@@ -70,20 +75,20 @@ async function Brand({ instanceLabel }: { instanceLabel?: string }) {
     <Link
       href="/dashboard"
       aria-label={t.app.brandHome}
-      className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-full pr-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+      className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-full pr-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card schematic:rounded-md"
     >
       <BrandMark />
       {/* Tablets show only the mark, so the section pills fit beside it; phones swap the name for the label. */}
       <span
         className={cn(
-          "font-display text-[1.0625rem] font-light tracking-[-0.01em] whitespace-nowrap md:max-lg:hidden",
+          "font-display text-[1.0625rem] font-light tracking-[-0.01em] whitespace-nowrap md:max-lg:hidden schematic:font-bold",
           instanceLabel && "max-sm:hidden",
         )}
       >
         {t.app.name}
       </span>
       {instanceLabel ? (
-        <span className="max-w-28 truncate rounded-full border border-border/70 bg-background/60 px-2 py-1 text-[0.625rem] leading-none font-semibold tracking-wide text-muted-foreground sm:max-w-36">
+        <span className="max-w-28 truncate rounded-full border border-border/70 bg-background/60 px-2 py-1 text-[0.625rem] leading-none font-semibold tracking-wide text-muted-foreground sm:max-w-36 schematic:rounded-sm schematic:border-border schematic:bg-background">
           {instanceLabel}
         </span>
       ) : null}

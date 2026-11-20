@@ -29,7 +29,7 @@ const ICONS: Record<CertificateStatus, LucideIcon> = {
 /** Dot color per status; icon and label carry the meaning as well. */
 const DOTS: Partial<Record<CertificateStatus, string>> = {
   valid: "bg-(--viz-good)",
-  expiring: "bg-(--viz-warning)",
+  expiring: "bg-(--ember)",
   unreachable: "bg-(--viz-critical)",
 };
 

@@ -22,6 +22,10 @@
   </tr>
 </table>
 
+Optional "Schematic" design, switched with the design toggle in Settings or the account menu:
+
+![Dashboard in the Schematic design](docs/dashboard-schematic-light.png)
+
 ## Features
 
 - **Caddyfile editor**: edit the main Caddyfile in the browser. Caddy checks it before anything

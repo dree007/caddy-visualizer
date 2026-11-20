@@ -86,7 +86,7 @@ export function MiniColumns({
       {current !== null && active !== null ? (
         <span
           role="status"
-          className="pointer-events-none absolute bottom-full z-10 mb-2 flex -translate-x-1/2 flex-col rounded-xl bg-popover px-3 py-2 text-xs whitespace-nowrap shadow-soft-lg"
+          className="pointer-events-none absolute bottom-full z-10 mb-2 flex -translate-x-1/2 flex-col rounded-xl bg-popover px-3 py-2 text-xs whitespace-nowrap shadow-soft-lg schematic:rounded-lg schematic:border schematic:border-border schematic:shadow-soft-md"
           style={{
             left: `clamp(3rem, ${((active + 0.5) / values.length) * 100}%, calc(100% - 3rem))`,
           }}

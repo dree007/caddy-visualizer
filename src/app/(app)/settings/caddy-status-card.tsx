@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, CircleDashed, Server } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleDashed } from "lucide-react";
 
 import { translateCode } from "@/i18n";
 import { getI18n } from "@/i18n/server";
@@ -24,7 +24,7 @@ export async function CaddyStatusCard() {
     runtime.state === "connected"
       ? {
           icon: CircleCheck,
-          tone: "text-emerald-600 dark:text-emerald-400",
+          tone: "text-violet-ink",
           text: c.connected,
         }
       : runtime.state === "unreachable"
@@ -53,28 +53,25 @@ export async function CaddyStatusCard() {
       aria-labelledby="caddy-status-heading"
       className="surface flex flex-col gap-4 p-5 md:p-7"
     >
-      <div className="flex items-center gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-stone text-foreground shadow-pressed">
-          <Server aria-hidden className="size-4" />
-        </span>
+      <div className="flex flex-col gap-1">
         <h2 id="caddy-status-heading" className="heading">
           {c.heading}
         </h2>
       </div>
-      <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_minmax(0,1fr)]">
+      <dl className="grid gap-x-6 gap-y-2 border-t border-border pt-4 text-sm sm:grid-cols-[auto_minmax(0,1fr)]">
         <dt className="text-muted-foreground">{c.connection}</dt>
         <dd className={`flex items-start gap-1.5 ${connection.tone}`}>
           <Icon aria-hidden className="mt-0.5 size-4 shrink-0" />
           {connection.text}
         </dd>
         <dt className="text-muted-foreground">{c.lastSync}</dt>
-        <dd>
+        <dd className="tabular-nums">
           {applied?.appliedAt
             ? formatDateTime(applied.appliedAt, locale)
             : t.common.none}
         </dd>
         <dt className="text-muted-foreground">{c.lastRevision}</dt>
-        <dd>{applied ? `#${applied.number}` : "–"}</dd>
+        <dd className="mono">{applied ? `#${applied.number}` : "–"}</dd>
         {running ? (
           <>
             <dt className="text-muted-foreground">{c.running}</dt>

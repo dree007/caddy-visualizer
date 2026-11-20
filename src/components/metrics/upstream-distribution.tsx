@@ -48,9 +48,9 @@ export async function UpstreamDistribution({
       className="surface flex flex-col gap-3 p-5 md:p-7"
     >
       <div className="flex flex-col gap-1">
-        <h3 id="upstreams-heading" className="heading">
+        <h2 id="upstreams-heading" className="heading">
           {u.heading}
-        </h3>
+        </h2>
         <p className="text-sm text-muted-foreground">{u.intro}</p>
         <p className="text-xs text-muted-foreground">
           {u.window(
@@ -69,7 +69,7 @@ export async function UpstreamDistribution({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[40rem] text-left text-sm">
             <thead className="text-muted-foreground">
-              <tr>
+              <tr className="border-b border-line-control/60">
                 <th className="py-2 pr-4 font-normal">{u.upstream}</th>
                 <th className="py-2 pr-4 font-normal">{u.health}</th>
                 <th className="py-2 pr-4 text-right font-normal">
@@ -95,12 +95,15 @@ export async function UpstreamDistribution({
                   metrics.proxied > 0 ? row.requests / metrics.proxied : 0;
                 const name = row.label ?? row.upstream;
                 return (
-                  <tr key={row.upstream} className="border-t align-middle">
-                    <td className="py-2 pr-4">
+                  <tr
+                    key={row.upstream}
+                    className="border-t border-border/70 align-middle"
+                  >
+                    <td className="py-2.5 pr-4">
                       {row.label ? (
                         <span className="block font-medium">{row.label}</span>
                       ) : null}
-                      <span className="block font-mono text-xs text-muted-foreground">
+                      <span className="mono block text-muted-foreground">
                         {row.upstream}
                       </span>
                       {row.configured ? null : (
@@ -127,11 +130,11 @@ export async function UpstreamDistribution({
                         <span className="flex items-center gap-2">
                           <span
                             aria-hidden
-                            className="relative h-2 w-24 shrink-0 overflow-hidden rounded-full"
+                            className="relative h-1.5 w-24 shrink-0 overflow-hidden rounded-sm"
                             style={{ background: "var(--viz-grid)" }}
                           >
                             <span
-                              className="absolute inset-y-0 left-0 rounded-full"
+                              className="absolute inset-y-0 left-0"
                               style={{
                                 width: `${share * 100}%`,
                                 background: "var(--viz-series)",

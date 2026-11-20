@@ -44,3 +44,13 @@ export function chartBuckets(
     };
   });
 }
+
+/** Rounds up to 1, 2 or 5 × 10^n, so the axis ticks are clean numbers. */
+export function niceMax(value: number): number {
+  if (value <= 0) return 4;
+  const power = 10 ** Math.floor(Math.log10(value));
+  for (const step of [1, 2, 5, 10]) {
+    if (value <= step * power) return Math.max(step * power, 2);
+  }
+  return 10 * power;
+}

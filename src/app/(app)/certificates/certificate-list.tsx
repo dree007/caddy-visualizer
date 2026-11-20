@@ -26,7 +26,10 @@ export function CertificateList({
     value ? formatDateTime(value, locale) : c.never;
 
   return (
-    <ul aria-label={c.listLabel} className="flex flex-col gap-3">
+    <ul
+      aria-label={c.listLabel}
+      className="surface divide-y divide-border overflow-hidden"
+    >
       {views.map((view) => {
         const check = view.check;
         const problem = view.error ? translateCode(t, view.error) : null;
@@ -36,15 +39,15 @@ export function CertificateList({
             : null;
         return (
           <li key={view.hostname} id={`cert-${view.hostname}`}>
-            <details className="surface group">
+            <details className="group">
               <summary
                 aria-label={c.details(view.hostname)}
-                className="flex min-h-14 cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[inherit] p-4 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:px-5 [&::-webkit-details-marker]:hidden"
+                className="flex min-h-14 cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1.5 p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:px-5 [&::-webkit-details-marker]:hidden"
               >
-                <span className="min-w-0 flex-1 basis-48 text-sm font-medium [overflow-wrap:anywhere]">
+                <span className="mono min-w-0 flex-1 basis-0 font-medium [overflow-wrap:anywhere]">
                   {view.hostname}
                 </span>
-                <span className="flex items-center gap-2">
+                <span className="ml-auto flex items-center gap-2">
                   {view.daysLeft !== null &&
                   (view.status === "valid" ||
                     view.status === "expiring" ||
@@ -52,8 +55,8 @@ export function CertificateList({
                     <span
                       className={
                         view.critical || view.status === "expired"
-                          ? "text-xs font-medium text-destructive tabular-nums"
-                          : "text-xs text-muted-foreground tabular-nums"
+                          ? "hidden text-xs font-medium text-destructive tabular-nums sm:inline"
+                          : "hidden text-xs text-muted-foreground tabular-nums sm:inline"
                       }
                     >
                       {c.daysLeft(view.daysLeft)}
@@ -66,7 +69,7 @@ export function CertificateList({
                   />
                 </span>
               </summary>
-              <div className="flex flex-col gap-3 border-t border-border/60 px-4 pt-3 pb-4 text-sm md:px-5">
+              <div className="flex flex-col gap-3 border-t border-border/60 bg-band/50 px-4 pt-3 pb-4 text-sm md:px-5">
                 {reason || problem ? (
                   <p
                     className={
@@ -101,17 +104,13 @@ export function CertificateList({
                     </Field>
                     <Field label={c.fields.sans}>
                       {check?.sans?.length ? (
-                        <span className="font-mono text-xs">
-                          {check.sans.join(", ")}
-                        </span>
+                        <span className="mono">{check.sans.join(", ")}</span>
                       ) : (
                         "–"
                       )}
                     </Field>
                     <Field label={c.fields.address}>
-                      <span className="font-mono text-xs">
-                        {check?.address ?? "–"}
-                      </span>
+                      <span className="mono">{check?.address ?? "–"}</span>
                     </Field>
                     <Field label={c.fields.lastSuccess}>
                       {dateTime(check?.lastSuccessAt)}
@@ -121,9 +120,7 @@ export function CertificateList({
                     </Field>
                     {check?.fingerprint256 ? (
                       <Field label={c.fields.fingerprint}>
-                        <span className="font-mono text-xs">
-                          {check.fingerprint256}
-                        </span>
+                        <span className="mono">{check.fingerprint256}</span>
                       </Field>
                     ) : null}
                   </dl>

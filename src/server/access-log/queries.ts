@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 
 import {
   knownHosts,
+  loadHostUpstreamFlows,
   type LogQuery,
   loadMetrics,
   loadUpstreamMetrics,
@@ -26,6 +27,12 @@ export async function loadTrafficMetrics(range: Range, host?: string) {
   await requireAccess();
   const db = getDb();
   return { metrics: loadMetrics(db, { range, host }), hosts: knownHosts(db) };
+}
+
+/** Per host and upstream counts for the dashboard wiring diagram. */
+export async function loadUpstreamFlows(range: Range) {
+  await requireAccess();
+  return loadHostUpstreamFlows(getDb(), { range });
 }
 
 /**

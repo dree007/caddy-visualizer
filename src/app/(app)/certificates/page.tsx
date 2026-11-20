@@ -14,12 +14,15 @@ import { loadCertificateOverview } from "@/server/certificates/checks";
 
 import { CertificateList } from "./certificate-list";
 import { CheckNow } from "./check-now";
+import { getDesign } from "@/server/design";
+
+import ClassicCertificatesPage from "./classic/classic-page";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.certificates.title };
 }
 
-export default async function CertificatesPage() {
+async function SchematicCertificatesPage() {
   const [overview, { locale, t }] = await Promise.all([
     loadCertificateOverview(),
     getI18n(),
@@ -27,7 +30,7 @@ export default async function CertificatesPage() {
   const c = t.certificates;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5 md:gap-7">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 flex-col gap-1">
           <p className="text-sm text-muted-foreground">
@@ -67,7 +70,7 @@ export default async function CertificatesPage() {
         />
       ) : (
         <>
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid items-start gap-5 lg:grid-cols-2">
             <CertificateStatusDistribution
               views={overview.views}
               locale={locale}
@@ -84,4 +87,10 @@ export default async function CertificatesPage() {
       )}
     </div>
   );
+}
+
+/** "Klassisch" is the page as on main; "Schaltplan" is the redesign. */
+export default async function CertificatesPage() {
+  if ((await getDesign()) === "classic") return ClassicCertificatesPage();
+  return SchematicCertificatesPage();
 }

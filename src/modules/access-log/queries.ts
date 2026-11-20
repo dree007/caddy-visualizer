@@ -42,6 +42,8 @@ export interface HostRow {
   bytes: number;
   errors: number;
   avgMs: number | null;
+  /** Requests per status class (2xx–5xx). */
+  byClass: Record<StatusClass, number>;
 }
 
 export interface Metrics {
@@ -168,8 +170,10 @@ function summarize(rows: (typeof trafficHourly.$inferSelect)[]): {
       bytes: 0,
       errors: 0,
       avgMs: null,
+      byClass: { "2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0 },
       durationSum: 0,
     };
+    if (statusClass) entry.byClass[statusClass] += row.requests;
     entry.requests += row.requests;
     entry.bytes += row.bytesOut;
     entry.errors += row.status >= 500 ? row.requests : 0;
@@ -291,6 +295,53 @@ export function loadUpstreamMetrics(
     proxied: list.reduce((sum, row) => sum + row.requests, 0),
     notProxied,
   };
+}
+
+/** Requests one host sent to one upstream, measured from the access log. */
+export interface HostUpstreamFlow {
+  host: string;
+  /** `host:port`, as Caddy logged it. */
+  upstream: string;
+  requests: number;
+  /** Responses ≥ 500. */
+  errors: number;
+  avgMs: number | null;
+}
+
+/**
+ * Requests per host and upstream of the range, from stored access log
+ * entries that carry the `upstream` field (same rules and retention as
+ * `loadUpstreamMetrics`). Entries without an answering upstream are skipped.
+ */
+export function loadHostUpstreamFlows(
+  db: Db,
+  {
+    range,
+    now = new Date(),
+    timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+  }: { range: Range; now?: Date; timeZone?: string },
+): HostUpstreamFlow[] {
+  const from = Math.max(
+    bucketsOf(range, now, timeZone)[0]!.start,
+    now.getTime() - ENTRY_RETENTION_MS,
+  );
+  return db
+    .all<{
+      host: string;
+      upstream: string;
+      requests: number;
+      errors: number;
+      duration: number;
+    }>(
+      sql`select ${accessLogEntries.host} as host, ${accessLogEntries.upstream} as upstream, count(*) as requests, sum(${accessLogEntries.status} >= 500) as errors, sum(${accessLogEntries.durationMs}) as duration from ${accessLogEntries} where ${accessLogEntries.ts} >= ${from} and ${accessLogEntries.upstream} is not null and ${accessLogEntries.upstream} != '' group by host, upstream`,
+    )
+    .map((row) => ({
+      host: row.host,
+      upstream: row.upstream,
+      requests: row.requests,
+      errors: row.errors,
+      avgMs: row.requests > 0 ? row.duration / row.requests : null,
+    }));
 }
 
 /** Host names with traffic in the last 30 days, for the filter. */

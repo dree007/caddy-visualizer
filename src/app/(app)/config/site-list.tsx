@@ -41,6 +41,7 @@ import type { SiteActionResult } from "@/server/caddy/site-form";
 import { type Messages, translateCode } from "@/i18n";
 import { useI18n } from "@/i18n/client";
 
+import { NewRouteRow } from "./new-route-row";
 import {
   applySentence,
   type Tone,
@@ -76,14 +77,32 @@ export interface SiteListItem {
 
 export type Feedback = { tone: Tone; text: string };
 
+/** A site block of the Caddyfile: listed for completeness, edited elsewhere. */
+export interface CaddyfileRowItem {
+  key: string;
+  /** The address as written in the Caddyfile. */
+  host: string;
+  /** Where it forwards to, when Caddy's running config says so. */
+  target: string | null;
+  /** 1-based line of the block. */
+  line: number;
+}
+
 /**
- * One markup for all sizes: a card list on phones, denser cards on tablets and
- * a table-like grid (CSS subgrid) on desktops. Same data and actions everywhere.
+ * Every route Caddy serves from the stored sources, one row each: Caddyfile
+ * blocks (read-only, linked to their line) and form sites (edit, delete,
+ * switch), followed by the inline row for a new route. The rows wrap on
+ * narrow screens; same data and actions everywhere.
  */
-export function SiteList({ sites }: { sites: SiteListItem[] }) {
+export function SiteList({
+  sites,
+  caddyfileRows = [],
+}: {
+  sites: SiteListItem[];
+  caddyfileRows?: CaddyfileRowItem[];
+}) {
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const { t } = useI18n();
-  const l = t.config.list;
 
   return (
     <div className="flex flex-col gap-3">
@@ -91,25 +110,87 @@ export function SiteList({ sites }: { sites: SiteListItem[] }) {
         {feedback ? <FeedbackAlert feedback={feedback} /> : null}
       </div>
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.3fr)_auto_auto_auto_auto] lg:overflow-hidden lg:rounded-3xl lg:bg-card lg:shadow-soft-md">
-        <div
-          aria-hidden
-          className="eyebrow hidden px-6 pt-5 pb-3 lg:col-span-full lg:grid lg:grid-cols-subgrid lg:gap-x-6"
-        >
-          <span>{l.hostname}</span>
-          <span>{l.target}</span>
-          <span>{l.tls}</span>
-          <span>{l.changed}</span>
-          <span>{l.status}</span>
-          <span />
-        </div>
-        <ul className="flex flex-col gap-3 lg:col-span-full lg:grid lg:grid-cols-subgrid lg:gap-0">
+      <section
+        aria-label={t.config.routes.label}
+        className="surface overflow-hidden"
+      >
+        <ul className="divide-y divide-border">
+          {caddyfileRows.map((row) => (
+            <CaddyfileRow key={row.key} row={row} />
+          ))}
           {sites.map((site) => (
             <SiteRow key={site.id} site={site} onFeedback={setFeedback} />
           ))}
+          <NewRouteRow />
         </ul>
-      </div>
+      </section>
     </div>
+  );
+}
+
+/** The arrow between host and target; its weight is purely decorative. */
+function RouteArrow() {
+  return (
+    <svg
+      aria-hidden
+      width="48"
+      height="12"
+      viewBox="0 0 48 12"
+      className="hidden shrink-0 text-primary md:block"
+    >
+      <path d="M0 6h42" stroke="currentColor" strokeWidth="2" fill="none" />
+      <path
+        d="M40 1l6 5-6 5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+    </svg>
+  );
+}
+
+const ROW =
+  "flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 data-[enabled=false]:bg-band/40";
+
+function SourceBadge({ source }: { source: "caddyfile" | "form" }) {
+  const { t } = useI18n();
+  return (
+    <span
+      className={`min-w-[5.25rem] rounded-sm px-2 py-0.5 text-center text-[0.8125rem] ${
+        source === "form"
+          ? "bg-primary/10 text-primary"
+          : "bg-stone text-muted-foreground"
+      }`}
+    >
+      {source === "form"
+        ? t.config.routes.sourceForm
+        : t.config.routes.sourceCaddyfile}
+    </span>
+  );
+}
+
+function CaddyfileRow({ row }: { row: CaddyfileRowItem }) {
+  const { t } = useI18n();
+  return (
+    <li className={ROW}>
+      <span className="mono min-w-0 flex-[1_1_13rem] font-medium [overflow-wrap:anywhere]">
+        {row.host}
+      </span>
+      <RouteArrow />
+      <span className="mono min-w-0 flex-[1_1_14rem] [overflow-wrap:anywhere] text-muted-foreground">
+        {row.target ?? "–"}
+      </span>
+      <SourceBadge source="caddyfile" />
+      <span className="flex min-w-[9.5rem] justify-end">
+        <Link
+          href="/config/caddyfile"
+          aria-label={t.config.routes.lineLabel(row.line, row.host)}
+          className="text-sm underline-offset-4 hover:underline max-md:py-3"
+        >
+          {t.config.routes.line(row.line)}
+        </Link>
+      </span>
+    </li>
   );
 }
 
@@ -137,115 +218,105 @@ function SiteRow({
   const TlsIcon = site.tls === "off" ? LockOpen : Lock;
 
   return (
-    <li
-      data-enabled={enabled}
-      aria-busy={pending || undefined}
-      className={[
-        "surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 p-5",
-        "[grid-template-areas:'host_host'_'upstream_upstream'_'tls_updated'_'toggle_actions']",
-        "md:grid-cols-[minmax(0,1fr)_auto_auto] md:gap-x-6 md:[grid-template-areas:'host_tls_toggle'_'upstream_updated_actions']",
-        "lg:col-span-full lg:grid-cols-subgrid lg:rounded-none lg:border-t lg:bg-transparent lg:px-6 lg:py-3 lg:shadow-none lg:[grid-template-areas:none]",
-      ].join(" ")}
-    >
-      <p
-        className={`min-w-0 font-medium [overflow-wrap:anywhere] [grid-area:host] lg:[grid-area:auto] ${enabled ? "" : "text-muted-foreground"}`}
-      >
-        {site.hostname}
-      </p>
-
-      <p className="flex min-w-0 items-center gap-1.5 font-mono text-sm text-muted-foreground [grid-area:upstream] lg:[grid-area:auto]">
-        {site.target.kind === "redirect" ? (
-          <CornerUpRight aria-hidden className="size-3.5 shrink-0" />
-        ) : (
-          <ArrowRight aria-hidden className="size-3.5 shrink-0 lg:hidden" />
-        )}
-        <span className="sr-only">
-          {site.target.kind === "redirect" ? l.redirectTo : l.upstream}:{" "}
+    <li data-enabled={enabled} aria-busy={pending || undefined} className={ROW}>
+      <div className="flex min-w-0 flex-[1_1_13rem] flex-col">
+        <span
+          className={`mono font-medium [overflow-wrap:anywhere] ${enabled ? "" : "text-muted-foreground"}`}
+        >
+          {site.hostname}
         </span>
-        <span className="min-w-0 break-all">{site.target.url}</span>
-      </p>
-
-      <div className="flex flex-wrap gap-1.5 [grid-area:tls] lg:[grid-area:auto]">
-        <Badge variant="outline" className="text-muted-foreground">
-          <TlsIcon aria-hidden data-icon="inline-start" />
-          {t.config.tls[site.tls].short}
-        </Badge>
-        {site.target.kind === "redirect" ? (
-          <Badge variant="outline" className="text-muted-foreground">
-            {l.redirect(site.target.code)}
-          </Badge>
-        ) : null}
-        {site.target.kind === "proxy" && site.target.skipTlsVerify ? (
-          <Badge variant="outline" className="text-muted-foreground">
-            <ShieldOff aria-hidden data-icon="inline-start" />
-            {l.skipTlsVerify}
-          </Badge>
-        ) : null}
-        {site.target.kind === "proxy" && site.target.upstreams > 0 ? (
-          <Badge variant="outline" className="text-muted-foreground">
-            <Network aria-hidden data-icon="inline-start" />
-            {l.loadBalanced(site.target.upstreams)}
-          </Badge>
-        ) : null}
-        {site.target.kind === "proxy" && site.target.headers > 0 ? (
-          <Badge variant="outline" className="text-muted-foreground">
-            <ListPlus aria-hidden data-icon="inline-start" />
-            {l.headers(site.target.headers)}
-          </Badge>
-        ) : null}
-        {site.basicAuth ? (
-          <Badge variant="outline" className="text-muted-foreground">
-            <KeyRound aria-hidden data-icon="inline-start" />
-            {l.basicAuth}
-          </Badge>
-        ) : null}
+        <p className="text-xs text-muted-foreground">
+          <span className="sr-only">{l.changed} </span>
+          <time dateTime={site.updatedAt}>{site.updatedLabel}</time>
+        </p>
       </div>
 
-      <p className="text-right text-xs text-muted-foreground [grid-area:updated] md:text-left lg:[grid-area:auto]">
-        <span className="lg:sr-only">{l.changed} </span>
-        <time dateTime={site.updatedAt}>{site.updatedLabel}</time>
-      </p>
-
-      {/* The label makes the whole status area a ≥44px touch target. */}
-      <label
-        htmlFor={switchId}
-        className="flex min-h-11 w-fit cursor-pointer items-center gap-2.5 text-sm [grid-area:toggle] lg:[grid-area:auto]"
-      >
-        <Switch
-          id={switchId}
-          checked={enabled}
-          onCheckedChange={toggle}
-          disabled={pending}
-          aria-label={l.activeLabel(site.hostname)}
+      {site.target.kind === "redirect" ? (
+        <CornerUpRight
+          aria-hidden
+          className="hidden size-4 shrink-0 text-primary md:block"
         />
-        <span className="flex items-center gap-1.5">
-          {pending ? (
-            <Spinner aria-hidden className="size-3" />
-          ) : (
-            <span
+      ) : (
+        <RouteArrow />
+      )}
+
+      <div className="flex min-w-0 flex-[1_1_14rem] flex-col gap-1.5">
+        <span className="mono flex min-w-0 items-center gap-1.5 text-muted-foreground">
+          {site.target.kind === "redirect" ? (
+            <CornerUpRight
               aria-hidden
-              className={`size-2 rounded-full ${enabled ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
+              className="size-3.5 shrink-0 md:hidden"
             />
+          ) : (
+            <ArrowRight aria-hidden className="size-3.5 shrink-0 md:hidden" />
           )}
-          <span className={enabled ? "" : "text-muted-foreground"}>
-            {enabled ? l.active : l.inactive}
+          <span className="sr-only">
+            {site.target.kind === "redirect" ? l.redirectTo : l.upstream}:{" "}
+          </span>
+          <span className="min-w-0 [overflow-wrap:anywhere]">
+            {site.target.url}
           </span>
         </span>
-      </label>
+        <div className="flex flex-wrap gap-1.5">
+          <Badge variant="outline" className="text-muted-foreground">
+            <TlsIcon aria-hidden data-icon="inline-start" />
+            {t.config.tls[site.tls].short}
+          </Badge>
+          {site.target.kind === "redirect" ? (
+            <Badge variant="outline" className="text-muted-foreground">
+              {l.redirect(site.target.code)}
+            </Badge>
+          ) : null}
+          {site.target.kind === "proxy" && site.target.skipTlsVerify ? (
+            <Badge variant="outline" className="text-muted-foreground">
+              <ShieldOff aria-hidden data-icon="inline-start" />
+              {l.skipTlsVerify}
+            </Badge>
+          ) : null}
+          {site.target.kind === "proxy" && site.target.upstreams > 0 ? (
+            <Badge variant="outline" className="text-muted-foreground">
+              <Network aria-hidden data-icon="inline-start" />
+              {l.loadBalanced(site.target.upstreams)}
+            </Badge>
+          ) : null}
+          {site.target.kind === "proxy" && site.target.headers > 0 ? (
+            <Badge variant="outline" className="text-muted-foreground">
+              <ListPlus aria-hidden data-icon="inline-start" />
+              {l.headers(site.target.headers)}
+            </Badge>
+          ) : null}
+          {site.basicAuth ? (
+            <Badge variant="outline" className="text-muted-foreground">
+              <KeyRound aria-hidden data-icon="inline-start" />
+              {l.basicAuth}
+            </Badge>
+          ) : null}
+        </div>
+      </div>
 
-      <div className="flex items-center justify-end gap-1 [grid-area:actions] lg:[grid-area:auto]">
-        <Button asChild variant="outline" className="max-md:h-11 lg:hidden">
-          <Link href={`/config/${site.id}/edit`}>
-            <Pencil aria-hidden data-icon="inline-start" />
-            {l.edit}
-          </Link>
-        </Button>
-        <Button
-          asChild
-          variant="ghost"
-          size="icon"
-          className="hidden lg:inline-flex"
+      <SourceBadge source="form" />
+
+      <div className="flex min-w-[9.5rem] items-center justify-end gap-1">
+        {/* The label makes the whole status area a ≥44px touch target. */}
+        <label
+          htmlFor={switchId}
+          className="flex min-h-11 w-fit cursor-pointer items-center gap-2.5 text-sm"
         >
+          <Switch
+            id={switchId}
+            checked={enabled}
+            onCheckedChange={toggle}
+            disabled={pending}
+            aria-label={l.activeLabel(site.hostname)}
+          />
+          <span className="flex items-center gap-1.5">
+            {pending ? <Spinner aria-hidden className="size-3" /> : null}
+            <span className={enabled ? "" : "text-muted-foreground"}>
+              {enabled ? l.active : l.inactive}
+            </span>
+          </span>
+        </label>
+        <Button asChild variant="ghost" size="icon" className="max-md:size-11">
           <Link
             href={`/config/${site.id}/edit`}
             aria-label={l.editLabel(site.hostname)}

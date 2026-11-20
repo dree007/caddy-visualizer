@@ -1,10 +1,4 @@
-import {
-  FilePenLine,
-  FileText,
-  type LucideIcon,
-  Plus,
-  Waypoints,
-} from "lucide-react";
+import { FilePenLine } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -17,6 +11,7 @@ import { listCaddyfileSites } from "@/modules/caddy/caddyfile-sites";
 import { parseSiteHostname } from "@/modules/caddy/hostname";
 import { definesAccessLogSnippet } from "@/modules/caddy/main-caddyfile";
 import { loadSitesOverview } from "@/modules/caddy/overview";
+import { parseSnapshot, pendingChanges } from "@/modules/caddy/pending-changes";
 import { listRevisions } from "@/modules/caddy/revisions";
 import { loadSyncStatus } from "@/modules/caddy/sync-status";
 import { requireAccess } from "@/server/auth/session";
@@ -34,9 +29,18 @@ import { CaddyfileAccessLog } from "./caddyfile-access-log";
 import { ConfigPreview } from "./config-preview";
 import { FlashNotice } from "./flash-notice";
 import { RevisionHistory } from "./revision-history";
-import { type SiteListItem, SiteList } from "./site-list";
+import { PendingPanel } from "./pending-panel";
+import { RouteDraftProvider } from "./route-draft";
+import {
+  type CaddyfileRowItem,
+  type SiteListItem,
+  SiteList,
+} from "./site-list";
 import { applySentence, type Tone } from "./sync-labels";
 import { SyncStatusPanel } from "./sync-status-panel";
+import { getDesign } from "@/server/design";
+
+import ClassicConfigPage from "./classic/classic-page";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.config.title };
@@ -44,9 +48,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const HISTORY_LENGTH = 10;
 
-export default async function ConfigPage({
-  searchParams,
-}: PageProps<"/config">) {
+async function SchematicConfigPage({ searchParams }: PageProps<"/config">) {
   await requireAccess();
   const { locale, t } = await getI18n();
   const c = t.config;
@@ -92,89 +94,133 @@ export default async function ConfigPage({
     updatedLabel: formatDateTime(site.updatedAt, locale),
   }));
   const enabledCount = sites.filter((site) => site.enabled).length;
-  const caddyfileSites = main === null ? [] : listCaddyfileSites(main);
   const running = configured ? await loadRunningSites() : null;
-  const manualCount =
-    running?.state === "ok"
-      ? running.sites.filter(
-          (site) => site.source.kind === "manual" && site.hosts.length > 0,
-        ).length
-      : null;
+  const caddyfileSites = main === null ? [] : listCaddyfileSites(main);
+  const caddyfileRows: CaddyfileRowItem[] = caddyfileSites.flatMap((block) =>
+    block.addresses.map((address) => ({
+      key: `${block.index}:${address}`,
+      host: address,
+      target: targetOf(running, address),
+      line: block.line,
+    })),
+  );
+
+  // Nothing is pending while Caddy already runs what is stored.
+  const applied = sync.lastApplied
+    ? parseSnapshot(sync.lastApplied.sitesSnapshot)
+    : null;
+  const changes =
+    sync.state === "synced" || sync.state === "idle"
+      ? []
+      : pendingChanges(applied, sites);
 
   return (
-    <div className="flex flex-col gap-6">
-      {notice ? <FlashNotice message={notice.text} tone={notice.tone} /> : null}
+    <RouteDraftProvider>
+      <div className="flex flex-wrap items-start gap-7">
+        <div className="flex min-w-0 flex-[999_1_600px] flex-col gap-6">
+          {notice ? (
+            <FlashNotice message={notice.text} tone={notice.tone} />
+          ) : null}
 
-      <section
-        aria-labelledby="sources-heading"
-        className="flex flex-col gap-4"
-      >
-        <div className="min-w-0">
-          <h2 id="sources-heading" className="heading text-2xl">
-            {c.heading}
-          </h2>
-          <p className="text-sm text-muted-foreground">{c.intro}</p>
+          <section
+            aria-labelledby="sources-heading"
+            className="flex flex-col gap-4"
+          >
+            <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+              <div className="min-w-0 flex-[1_1_22rem]">
+                <h2 id="sources-heading" className="heading text-2xl">
+                  {c.heading}
+                </h2>
+                <p className="text-sm text-muted-foreground">{c.intro}</p>
+                <p className="mt-1 text-sm">
+                  {c.routes.count(sites.length, enabledCount)}
+                </p>
+              </div>
+              {configured ? (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-fit max-md:h-11 max-sm:w-full"
+                >
+                  <Link href="/config/caddyfile">
+                    <FilePenLine aria-hidden data-icon="inline-start" />
+                    {c.openCaddyfile}
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+
+            <SyncStatusPanel status={sync} locale={locale} t={t} />
+          </section>
+
+          {main !== null && caddyfileSites.length > 0 ? (
+            <CaddyfileAccessLog
+              sites={caddyfileSites}
+              baseSha256={sha256Of(main)}
+              snippetDefined={definesAccessLogSnippet(main)}
+            />
+          ) : null}
+
+          <SiteList sites={items} caddyfileRows={caddyfileRows} />
+
+          <RevisionHistory
+            revisions={revisions}
+            active={sync.lastApplied}
+            canApply={configured}
+            locale={locale}
+            t={t}
+          />
         </div>
 
-        <SyncStatusPanel status={sync} locale={locale} t={t} />
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <SourceCard
-            icon={FileText}
-            title={c.caddyfileCard.title}
-            description={c.caddyfileCard.text}
-            meta={manualCount === null ? null : c.siteCount(manualCount)}
-            href="/config/caddyfile"
-            action={c.caddyfileCard.action}
-            actionIcon={FilePenLine}
-            disabled={!configured}
-          />
-          <SourceCard
-            icon={Waypoints}
-            title={c.formCard.title}
-            description={c.formCard.text}
-            meta={
-              sites.length === 0
-                ? c.formCard.none
-                : c.formCard.count(sites.length, enabledCount)
-            }
-            href="/config/new"
-            action={c.formCard.action}
-            actionIcon={Plus}
-          />
-        </div>
-      </section>
-
-      {main !== null && caddyfileSites.length > 0 ? (
-        <CaddyfileAccessLog
-          sites={caddyfileSites}
-          baseSha256={sha256Of(main)}
-          snippetDefined={definesAccessLogSnippet(main)}
-        />
-      ) : null}
-
-      {items.length > 0 ? (
-        <section
-          aria-labelledby="form-sites-heading"
-          className="flex flex-col gap-3"
+        <PendingPanel
+          changes={changes}
+          configured={configured}
+          base={
+            sync.lastApplied
+              ? {
+                  number: sync.lastApplied.number,
+                  sha256: sync.lastApplied.configSha256,
+                }
+              : null
+          }
         >
-          <h2 id="form-sites-heading" className="heading text-2xl">
-            {c.formSitesHeading}
-          </h2>
-          <SiteList sites={items} />
-          <ConfigPreview preview={preview} sync={sync} locale={locale} t={t} />
-        </section>
-      ) : null}
-
-      <RevisionHistory
-        revisions={revisions}
-        active={sync.lastApplied}
-        canApply={configured}
-        locale={locale}
-        t={t}
-      />
-    </div>
+          {items.length > 0 ? (
+            <ConfigPreview
+              preview={preview}
+              sync={sync}
+              locale={locale}
+              t={t}
+            />
+          ) : null}
+        </PendingPanel>
+      </div>
+    </RouteDraftProvider>
   );
+}
+
+/** What Caddy forwards a Caddyfile address to, as far as its running config says. */
+function targetOf(
+  running: Awaited<ReturnType<typeof loadRunningSites>> | null,
+  address: string,
+): string | null {
+  if (running?.state !== "ok") return null;
+  const host = address.replace(/^[a-z]+:\/\//i, "").replace(/:\d+$/, "");
+  const site = running.sites.find(
+    (candidate) =>
+      candidate.source.kind === "manual" && candidate.hosts.includes(host),
+  );
+  const target = site?.targets[0];
+  if (!target) return null;
+  switch (target.kind) {
+    case "proxy":
+      return target.upstreams.join(", ");
+    case "redirect":
+      return target.location;
+    case "files":
+      return target.root;
+    case "respond":
+      return String(target.status);
+  }
 }
 
 const APPLY_STATES = new Set<ApplyOutcome["state"]>([
@@ -206,49 +252,8 @@ function noticeOf(
   return { text: `${saved} ${outcome.text}`, tone: outcome.tone };
 }
 
-function SourceCard({
-  icon: Icon,
-  title,
-  description,
-  meta,
-  href,
-  action,
-  actionIcon: ActionIcon,
-  disabled = false,
-}: {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  meta: string | null;
-  href: "/config/caddyfile" | "/config/new";
-  action: string;
-  actionIcon: LucideIcon;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="surface flex flex-col gap-3 p-5 md:p-7">
-      <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-stone text-foreground shadow-pressed">
-          <Icon aria-hidden className="size-4" />
-        </span>
-        <div className="flex min-w-0 flex-col">
-          <h3 className="heading">{title}</h3>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
-      </div>
-      {meta ? <p className="text-sm">{meta}</p> : null}
-      {disabled ? null : (
-        <Button
-          asChild
-          variant="outline"
-          className="mt-auto w-fit max-md:h-11 max-sm:w-full"
-        >
-          <Link href={href}>
-            <ActionIcon aria-hidden data-icon="inline-start" />
-            {action}
-          </Link>
-        </Button>
-      )}
-    </div>
-  );
+/** "Klassisch" is the page as on main; "Schaltplan" is the redesign. */
+export default async function ConfigPage(props: PageProps<"/config">) {
+  if ((await getDesign()) === "classic") return ClassicConfigPage(props);
+  return SchematicConfigPage(props);
 }

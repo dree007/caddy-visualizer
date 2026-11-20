@@ -9,6 +9,9 @@ import { formatBytes, formatLogTime, formatMs } from "@/lib/format";
 import { normalizeHost } from "@/modules/access-log/parser";
 import { STATUS_CLASSES, type StatusClass } from "@/modules/access-log/queries";
 import { loadLogEntries } from "@/server/access-log/queries";
+import { getDesign } from "@/server/design";
+
+import ClassicLogsPage from "./classic/classic-page";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getI18n()).t.logs.title };
@@ -19,11 +22,11 @@ const PAGE_SIZE = 100;
 const STATUS_TONE: Record<StatusClass, string> = {
   "2xx": "text-foreground",
   "3xx": "text-muted-foreground",
-  "4xx": "text-amber-700 dark:text-amber-400",
+  "4xx": "text-ember-ink",
   "5xx": "text-destructive",
 };
 
-export default async function LogsPage({ searchParams }: PageProps<"/logs">) {
+async function SchematicLogsPage({ searchParams }: PageProps<"/logs">) {
   const params = await searchParams;
   const { locale, t } = await getI18n();
   const l = t.logs;
@@ -59,7 +62,9 @@ export default async function LogsPage({ searchParams }: PageProps<"/logs">) {
         aria-label={l.filter}
       >
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">{l.host}</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            {l.host}
+          </span>
           <select
             name="host"
             defaultValue={host ?? ""}
@@ -74,7 +79,9 @@ export default async function LogsPage({ searchParams }: PageProps<"/logs">) {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">{l.status}</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            {l.status}
+          </span>
           <select
             name="status"
             defaultValue={statusClass ?? ""}
@@ -89,7 +96,9 @@ export default async function LogsPage({ searchParams }: PageProps<"/logs">) {
           </select>
         </label>
         <label className="flex min-w-40 flex-1 flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">{l.pathContains}</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            {l.pathContains}
+          </span>
           <input
             name="path"
             defaultValue={path}
@@ -119,57 +128,94 @@ export default async function LogsPage({ searchParams }: PageProps<"/logs">) {
           description={filtered ? l.noMatchText : l.emptyText}
         />
       ) : (
-        <div className="surface overflow-x-auto">
-          <table className="w-full min-w-[44rem] text-left text-sm">
-            <thead className="text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-normal">{l.time}</th>
-                <th className="px-4 py-2 font-normal">{l.host}</th>
-                <th className="px-4 py-2 font-normal">{l.request}</th>
-                <th className="px-4 py-2 text-right font-normal">{l.status}</th>
-                <th className="px-4 py-2 text-right font-normal">
-                  {l.duration}
-                </th>
-                <th className="px-4 py-2 text-right font-normal">{l.size}</th>
-              </tr>
-            </thead>
-            <tbody className="tabular-nums">
-              {entries.map((entry) => {
-                const statusClass =
-                  `${Math.floor(entry.status / 100)}xx` as StatusClass;
-                return (
-                  <tr key={entry.id} className="border-t">
-                    <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">
-                      <time dateTime={new Date(entry.ts).toISOString()}>
-                        {formatLogTime(entry.ts, locale)}
-                      </time>
-                    </td>
-                    <td className="px-4 py-2 [overflow-wrap:anywhere]">
-                      {entry.host}
-                    </td>
-                    <td className="px-4 py-2 font-mono text-xs [overflow-wrap:anywhere]">
-                      <span className="text-muted-foreground">
-                        {entry.method}
-                      </span>{" "}
-                      {entry.path}
-                    </td>
-                    <td
-                      className={`px-4 py-2 text-right font-medium ${STATUS_TONE[statusClass] ?? ""}`}
+        <>
+          {/* Phones: one ruled row per request, no horizontal scrolling. */}
+          <ul className="surface flex flex-col divide-y divide-border md:hidden">
+            {entries.map((entry) => {
+              const statusClass =
+                `${Math.floor(entry.status / 100)}xx` as StatusClass;
+              return (
+                <li key={entry.id} className="flex flex-col gap-1 px-4 py-3">
+                  <span className="mono min-w-0 truncate font-medium">
+                    {entry.host}
+                  </span>
+                  <p className="mono min-w-0 text-xs [overflow-wrap:anywhere] text-muted-foreground">
+                    <span className="text-foreground">{entry.method}</span>{" "}
+                    {entry.path}
+                  </p>
+                  <p className="flex flex-wrap items-baseline gap-x-3 text-xs text-muted-foreground tabular-nums">
+                    <span
+                      className={`font-semibold ${STATUS_TONE[statusClass] ?? ""}`}
                     >
                       {entry.status}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      {formatMs(entry.durationMs, locale)}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      {formatBytes(entry.bytes, locale)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    </span>
+                    <time dateTime={new Date(entry.ts).toISOString()}>
+                      {formatLogTime(entry.ts, locale)}
+                    </time>
+                    <span>{formatMs(entry.durationMs, locale)}</span>
+                    <span>{formatBytes(entry.bytes, locale)}</span>
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="surface hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[44rem] text-left text-sm">
+              <thead className="text-muted-foreground">
+                <tr className="border-b border-line-control/60">
+                  <th className="px-4 py-2 font-normal">{l.time}</th>
+                  <th className="px-4 py-2 font-normal">{l.host}</th>
+                  <th className="px-4 py-2 font-normal">{l.request}</th>
+                  <th className="px-4 py-2 text-right font-normal">
+                    {l.status}
+                  </th>
+                  <th className="px-4 py-2 text-right font-normal">
+                    {l.duration}
+                  </th>
+                  <th className="px-4 py-2 text-right font-normal">{l.size}</th>
+                </tr>
+              </thead>
+              <tbody className="tabular-nums">
+                {entries.map((entry) => {
+                  const statusClass =
+                    `${Math.floor(entry.status / 100)}xx` as StatusClass;
+                  return (
+                    <tr key={entry.id} className="border-t border-border/70">
+                      <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">
+                        <time dateTime={new Date(entry.ts).toISOString()}>
+                          {formatLogTime(entry.ts, locale)}
+                        </time>
+                      </td>
+                      <td className="mono px-4 py-2 whitespace-nowrap">
+                        {entry.host}
+                      </td>
+                      <td className="mono px-4 py-2 whitespace-nowrap">
+                        <span className="text-muted-foreground">
+                          {entry.method}
+                        </span>{" "}
+                        {entry.path}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <span
+                          className={`inline-flex min-w-8 justify-end font-semibold ${STATUS_TONE[statusClass] ?? ""}`}
+                        >
+                          {entry.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {formatMs(entry.durationMs, locale)}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {formatBytes(entry.bytes, locale)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
       {older ? (
         <Link
@@ -181,4 +227,10 @@ export default async function LogsPage({ searchParams }: PageProps<"/logs">) {
       ) : null}
     </div>
   );
+}
+
+/** "Klassisch" is the page as on main; "Schaltplan" is the redesign. */
+export default async function LogsPage(props: PageProps<"/logs">) {
+  if ((await getDesign()) === "classic") return ClassicLogsPage(props);
+  return SchematicLogsPage(props);
 }

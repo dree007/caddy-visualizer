@@ -1,9 +1,9 @@
 # Production image. On start the server applies migrations and creates the
 # initial admin (src/server/startup.ts); SQLite lives on the /data volume.
 
-ARG NODE_VERSION=24-bookworm-slim
-# Reviewed Node 24 / Debian 13 runtime; update digest only after scan + smoke tests.
-ARG NODE_RUNTIME_IMAGE=gcr.io/distroless/nodejs24-debian13:nonroot@sha256:78f07ef1b5ea71ad7c055df15d0dd8997f2d288f9158623c4d4ae3d765b7d50d
+ARG NODE_VERSION=24.22.3-bookworm-slim
+# Reviewed Node 24.22.3 / Debian 13 runtime; update digest only after scan + smoke tests.
+ARG NODE_RUNTIME_IMAGE=gcr.io/distroless/nodejs24-debian13:nonroot@sha256:6abfcb367ebc291572c774c1592a986be2ab26a2486f73093401327495a5962a
 
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app

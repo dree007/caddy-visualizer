@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useI18n } from "@/i18n/client";
 import { formatCount } from "@/lib/format";
 
+import { niceMax } from "./buckets";
+
 export interface ChartBucket {
   key: string;
   /** Axis label; empty for buckets without a tick. */
@@ -34,15 +36,27 @@ export function RequestsChart({
   const max = niceMax(Math.max(0, ...buckets.map((b) => b.requests)));
   const ticks = [max, max / 2, 0];
   const current = active === null ? null : buckets[active];
+  const point = (bucket: ChartBucket, index: number) => {
+    const x = buckets.length > 1 ? (index / (buckets.length - 1)) * 100 : 50;
+    const y = 100 - (max > 0 ? (bucket.requests / max) * 100 : 0);
+    return { x, y };
+  };
+  const line = buckets
+    .map((bucket, index) => {
+      const { x, y } = point(bucket, index);
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+  const area = `0,100 ${line} 100,100`;
 
   return (
     <section
       aria-labelledby="requests-heading"
       className="surface flex flex-col gap-3 p-5 md:p-7"
     >
-      <h3 id="requests-heading" className="heading">
+      <h2 id="requests-heading" className="heading">
         {title}
-      </h3>
+      </h2>
       <div className="flex gap-2">
         <div
           aria-hidden
@@ -67,53 +81,83 @@ export function RequestsChart({
               />
             ))}
           </div>
-          <div
-            className="relative flex h-48 items-end gap-[2px]"
-            onPointerLeave={() => setActive(null)}
-          >
-            {buckets.map((bucket, index) => (
-              <button
-                key={bucket.key}
-                type="button"
-                aria-label={c.bar(
-                  bucket.label,
-                  count(bucket.requests),
-                  count(bucket.errors),
-                )}
-                onPointerEnter={() => setActive(index)}
-                onFocus={() => setActive(index)}
-                onBlur={() => setActive(null)}
-                className="group flex h-full min-w-0 flex-1 cursor-default items-end justify-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-              >
-                <span
-                  className="block w-full max-w-6 rounded-t-[4px] transition-opacity group-hover:opacity-80 group-focus-visible:opacity-80"
-                  style={{
-                    height: max > 0 ? `${(bucket.requests / max) * 100}%` : 0,
-                    background: "var(--viz-series)",
-                  }}
-                />
-              </button>
-            ))}
-          </div>
-          {current ? (
-            <div
-              role="status"
-              className="pointer-events-none absolute top-0 z-10 flex -translate-x-1/2 flex-col rounded-2xl bg-popover px-3.5 py-2.5 text-xs shadow-soft-lg"
-              style={{
-                left: `clamp(4rem, ${((active! + 0.5) / buckets.length) * 100}%, calc(100% - 4rem))`,
-              }}
+          <div className="relative h-48" onPointerLeave={() => setActive(null)}>
+            <svg
+              aria-hidden
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              className="absolute inset-0 size-full"
             >
-              <span className="text-sm font-semibold tabular-nums">
-                {c.requests(count(current.requests))}
-              </span>
-              <span className="text-muted-foreground">{current.label}</span>
-              {current.errors > 0 ? (
-                <span className="text-muted-foreground tabular-nums">
-                  {c.errors(count(current.errors))}
-                </span>
-              ) : null}
+              <polygon points={area} fill="var(--viz-series)" opacity="0.12" />
+              <polyline
+                points={line}
+                fill="none"
+                stroke="var(--viz-series)"
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            {/* One hit target per bucket, so hover and focus name every value. */}
+            <div className="absolute inset-0 flex">
+              {buckets.map((bucket, index) => (
+                <button
+                  key={bucket.key}
+                  type="button"
+                  aria-label={c.bar(
+                    bucket.label,
+                    count(bucket.requests),
+                    count(bucket.errors),
+                  )}
+                  onPointerEnter={() => setActive(index)}
+                  onFocus={() => setActive(index)}
+                  onBlur={() => setActive(null)}
+                  className="h-full min-w-0 flex-1 cursor-default outline-none focus-visible:bg-ring/5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                />
+              ))}
             </div>
-          ) : null}
+            {/* Hours with server errors: mark size grows with the count. */}
+            <div aria-hidden className="absolute inset-x-0 bottom-2.5">
+              {buckets.map((bucket, index) => {
+                if (bucket.errors === 0) return null;
+                const size = 5 + Math.min(9, Math.sqrt(bucket.errors) * 2.4);
+                return (
+                  <span
+                    key={bucket.key}
+                    className="absolute -translate-x-1/2 rounded-full"
+                    style={{
+                      left: `${point(bucket, index).x}%`,
+                      width: size,
+                      height: size,
+                      background: "var(--viz-critical)",
+                    }}
+                  />
+                );
+              })}
+            </div>
+            {current ? (
+              <div
+                role="status"
+                className="pointer-events-none absolute top-0 z-10 flex -translate-x-1/2 flex-col rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-soft-md"
+                style={{
+                  left: `clamp(4rem, ${((active! + 0.5) / buckets.length) * 100}%, calc(100% - 4rem))`,
+                }}
+              >
+                <span className="text-sm font-semibold tabular-nums">
+                  {c.requests(count(current.requests))}
+                </span>
+                <span className="text-muted-foreground">{current.label}</span>
+                {current.errors > 0 ? (
+                  <span
+                    className="tabular-nums"
+                    style={{ color: "var(--viz-critical)" }}
+                  >
+                    {c.errors(count(current.errors))}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
           <div
             aria-hidden
             className="mt-1 flex gap-[2px] text-xs text-muted-foreground"
@@ -138,6 +182,14 @@ export function RequestsChart({
           </div>
         </div>
       </div>
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span
+          aria-hidden
+          className="size-2 rounded-full"
+          style={{ background: "var(--viz-critical)" }}
+        />
+        {c.errorMarks}
+      </p>
       <details className="text-sm">
         <summary className="min-h-11 cursor-pointer py-2 text-muted-foreground md:min-h-0">
           {c.asTable}
@@ -171,14 +223,4 @@ export function RequestsChart({
       </details>
     </section>
   );
-}
-
-/** Rounds up to 1, 2 or 5 × 10^n, so the axis ticks are clean numbers. */
-export function niceMax(value: number): number {
-  if (value <= 0) return 4;
-  const power = 10 ** Math.floor(Math.log10(value));
-  for (const step of [1, 2, 5, 10]) {
-    if (value <= step * power) return Math.max(step * power, 2);
-  }
-  return 10 * power;
 }

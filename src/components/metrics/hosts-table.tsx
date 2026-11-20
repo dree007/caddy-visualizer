@@ -27,44 +27,46 @@ export async function HostsTable({
       aria-labelledby="hosts-heading"
       className="surface flex flex-col gap-3 p-5 md:p-7"
     >
-      <h3 id="hosts-heading" className="heading">
+      <h2 id="hosts-heading" className="heading">
         {h.heading}
-      </h3>
+      </h2>
       {hosts.length === 0 ? (
         <p className="text-sm text-muted-foreground">{h.empty}</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[32rem] text-left text-sm">
+          <table className="w-full text-left text-sm sm:min-w-[36rem]">
             <thead className="text-muted-foreground">
-              <tr>
+              <tr className="border-b border-line-control/60">
                 <th className="py-2 pr-4 font-normal">{h.host}</th>
                 <th className="py-2 pr-4 text-right font-normal">
                   {h.requests}
                 </th>
-                <th className="py-2 pr-4 text-right font-normal">
+                <th className="hidden py-2 pr-4 text-right font-normal sm:table-cell">
                   {h.traffic}
                 </th>
                 <th className="py-2 pr-4 text-right font-normal">{h.errors}</th>
-                <th className="py-2 text-right font-normal">{h.avgTime}</th>
+                <th className="hidden py-2 text-right font-normal sm:table-cell">
+                  {h.avgTime}
+                </th>
               </tr>
             </thead>
             <tbody className="tabular-nums">
               {hosts.map((host) => {
                 const earlier = before.get(host.host);
                 return (
-                  <tr key={host.host} className="border-t">
-                    <td className="py-2 pr-4">
+                  <tr key={host.host} className="border-t border-border/70">
+                    <td className="py-2.5 pr-4">
                       <Link
                         href={{
                           pathname: "/metrics",
                           query: { range, host: host.host },
                         }}
-                        className="font-medium [overflow-wrap:anywhere] hover:underline"
+                        className="mono font-medium whitespace-nowrap underline-offset-4 hover:text-violet-ink hover:underline"
                       >
                         {host.host}
                       </Link>
                     </td>
-                    <td className="py-2 pr-4 text-right">
+                    <td className="py-2.5 pr-4 text-right">
                       <span className="flex flex-col items-end">
                         {formatCount(host.requests, locale)}
                         <TrendBadge
@@ -79,10 +81,10 @@ export async function HostsTable({
                         />
                       </span>
                     </td>
-                    <td className="py-2 pr-4 text-right">
+                    <td className="hidden py-2 pr-4 text-right sm:table-cell">
                       {formatBytes(host.bytes, locale)}
                     </td>
-                    <td className="py-2 pr-4 text-right">
+                    <td className="py-2.5 pr-4 text-right">
                       <span className="flex flex-col items-end">
                         {formatCount(host.errors, locale)}
                         {host.errors > 0 || (earlier?.errors ?? 0) > 0 ? (
@@ -99,7 +101,7 @@ export async function HostsTable({
                         ) : null}
                       </span>
                     </td>
-                    <td className="py-2 text-right">
+                    <td className="hidden py-2 text-right sm:table-cell">
                       {formatMs(host.avgMs, locale)}
                     </td>
                   </tr>

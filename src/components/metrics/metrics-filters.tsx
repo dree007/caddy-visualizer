@@ -27,13 +27,16 @@ export function MetricsFilters({
   };
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <nav aria-label={t.metrics.range} className="surface-pressed flex p-1">
+      <nav
+        aria-label={t.metrics.range}
+        className="surface-pressed flex p-1 schematic:gap-1"
+      >
         {RANGES.map((r) => (
           <Link
             key={r}
             href={href({ range: r })}
             aria-current={r === range ? "page" : undefined}
-            className="inline-flex min-h-10 items-center rounded-full px-4 text-sm font-medium text-muted-foreground transition-[color,background-color,box-shadow] duration-200 hover:text-foreground aria-[current=page]:bg-card aria-[current=page]:text-foreground aria-[current=page]:shadow-soft-sm md:min-h-8"
+            className="inline-flex min-h-10 items-center rounded-full px-4 text-sm font-medium text-muted-foreground transition-[color,background-color,box-shadow] duration-200 hover:text-foreground aria-[current=page]:bg-card aria-[current=page]:text-foreground aria-[current=page]:shadow-soft-sm md:min-h-8 schematic:rounded-md schematic:px-3.5 schematic:aria-[current=page]:font-semibold"
           >
             {t.metrics.ranges[r]}
           </Link>

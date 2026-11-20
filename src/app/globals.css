@@ -3,16 +3,14 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+/* Design "Schaltplan": `schematic:` applies below <html data-design="schematic">. */
+@custom-variant schematic (&:where([data-design="schematic"], [data-design="schematic"] *));
 
 @theme inline {
   --font-heading: var(--font-display);
-  --font-display:
-    var(--font-inter-tight), var(--font-inter), ui-sans-serif, system-ui,
-    sans-serif;
-  --font-sans:
-    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, Menlo, monospace;
+  --font-display: var(--design-font-display);
+  --font-sans: var(--design-font-sans);
+  --font-mono: var(--design-font-mono);
   --color-band: var(--band);
   --color-stone: var(--stone);
   --color-line-control: var(--line-control);
@@ -58,14 +56,14 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  /* Atelier Soft: 8 small · 12 inputs · 16 small cards · 24 cards · 32 hero. */
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.25rem;
-  --radius-2xl: 1.5rem;
-  --radius-3xl: 1.5rem;
-  --radius-4xl: 2rem;
+  /* Per design, see --design-radius-* below. */
+  --radius-sm: var(--design-radius-sm);
+  --radius-md: var(--design-radius-md);
+  --radius-lg: var(--design-radius-lg);
+  --radius-xl: var(--design-radius-xl);
+  --radius-2xl: var(--design-radius-2xl);
+  --radius-3xl: var(--design-radius-3xl);
+  --radius-4xl: var(--design-radius-4xl);
 }
 
 :root {
@@ -140,6 +138,43 @@
   --sidebar-accent-foreground: #1b1712;
   --sidebar-border: #e0d6c7;
   --sidebar-ring: #3a36ff;
+  --status-error: #b4321f;
+  --status-error-soft: rgb(180 50 31 / 0.1);
+}
+
+:root {
+  /* Design "Klassisch" (default): fonts and radii. Colours live in :root/.dark above. */
+  --design-font-display:
+    var(--font-inter-tight), var(--font-inter), ui-sans-serif, system-ui,
+    sans-serif;
+  --design-font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --design-font-mono: var(--font-geist-mono), ui-monospace, Menlo, monospace;
+  --design-radius-sm: 0.5rem;
+  --design-radius-md: 0.75rem;
+  --design-radius-lg: 1rem;
+  --design-radius-xl: 1.25rem;
+  --design-radius-2xl: 1.5rem;
+  --design-radius-3xl: 1.5rem;
+  --design-radius-4xl: 2rem;
+}
+
+html[data-design="schematic"] {
+  /* Design "Schaltplan": crisp, technical. 4 badges · 6 inputs · 8 buttons · 10 cards · 14 hero. */
+  --design-font-display:
+    var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --design-font-sans:
+    var(--font-schibsted), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --design-font-mono: var(--font-martian-mono), ui-monospace, Menlo, monospace;
+  --design-radius-sm: 0.25rem;
+  --design-radius-md: 0.375rem;
+  --design-radius-lg: 0.5rem;
+  --design-radius-xl: 0.625rem;
+  --design-radius-2xl: 0.625rem;
+  --design-radius-3xl: 0.625rem;
+  --design-radius-4xl: 0.875rem;
 }
 
 .dark {
@@ -207,6 +242,145 @@
   --sidebar-accent-foreground: #f1ebe1;
   --sidebar-border: #423a32;
   --sidebar-ring: #9b98ff;
+  --status-error: #f08a74;
+  --status-error-soft: rgb(240 138 116 / 0.15);
+}
+
+html[data-design="schematic"] {
+  /* Schaltplan: cool grey-white paper, navy ink, petrol signal. */
+  --background: #edf1f5;
+  --band: #e1e7ee;
+  --card: #ffffff;
+  --stone: #dce3ea;
+  --foreground: #0f2236;
+  --card-foreground: #0f2236;
+  --popover: #ffffff;
+  --popover-foreground: #0f2236;
+  --primary: #0f2236;
+  --primary-foreground: #ffffff;
+  --secondary: #e1e7ee;
+  --secondary-foreground: #0f2236;
+  --muted: #e1e7ee;
+  --muted-foreground: #4d6075;
+  --accent: #e1e7ee;
+  --accent-foreground: #0f2236;
+  --destructive: #a82e20;
+  --border: #c6d1dc;
+  --input: #8597aa;
+  --line-control: #8597aa;
+  --ring: #0b7f7b;
+  /* Legacy token names kept so every page inherits the palette:
+     violet = petrol (signal/accent), ember = warning amber. */
+  --violet: #0b7f7b;
+  --violet-soft: #dcf0ef;
+  --violet-ink: #0b6b67;
+  --ember: #b45309;
+  --ember-soft: #fdf0dc;
+  --ember-ink: #8a4208;
+  --soft-sm: 0 0 0 1px rgb(15 34 54 / 0.12);
+  --soft-md: 0 0 0 1px rgb(15 34 54 / 0.14), 0 1px 2px rgb(15 34 54 / 0.04);
+  --soft-lg:
+    0 0 0 1px rgb(15 34 54 / 0.14), 0 4px 8px rgb(15 34 54 / 0.06),
+    0 16px 40px rgb(15 34 54 / 0.12);
+  --pressed: inset 0 0 0 1px rgb(15 34 54 / 0.08);
+  --ink-glow: 0 1px 2px rgb(15 34 54 / 0.2);
+  --chart-1: #0b7f7b;
+  --chart-2: #0f2236;
+  --chart-3: #8597aa;
+  --chart-4: #4d6075;
+  --chart-5: #b45309;
+  /* Data viz: one series hue (petrol) + fixed status colors. */
+  --viz-series: #0b7f7b;
+  --viz-good: #0b7f7b;
+  --viz-warning: #d9930b;
+  --viz-critical: #a82e20;
+  --viz-neutral: #8597aa;
+  --viz-grid: #e1e7ee;
+  /* Caddyfile syntax highlighting. */
+  --syntax-address: #0b6b67;
+  --syntax-directive: #1f4e8c;
+  --syntax-string: #2f7a3b;
+  --syntax-placeholder: #b45309;
+  --syntax-matcher: #8a3a7a;
+  --syntax-snippet: #8a5a00;
+  --syntax-muted: #5f7285;
+  --radius: 0.5rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f2236;
+  --sidebar-primary: #0f2236;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e1e7ee;
+  --sidebar-accent-foreground: #0f2236;
+  --sidebar-border: #c6d1dc;
+  --sidebar-ring: #0b7f7b;
+  /* Status (Schaltplan): error chip, as on the 5xx marks. */
+  --status-error: #a82e20;
+  --status-error-soft: #fbe4e0;
+}
+
+html[data-design="schematic"].dark {
+  /* The same plan at night: deep navy paper, petrol stays the signal. */
+  --background: #0b1724;
+  --band: #14263a;
+  --card: #0f2236;
+  --stone: #1b3049;
+  --foreground: #e6edf4;
+  --card-foreground: #e6edf4;
+  --popover: #13283d;
+  --popover-foreground: #e6edf4;
+  --primary: #e6edf4;
+  --primary-foreground: #0b1724;
+  --secondary: #1b3049;
+  --secondary-foreground: #e6edf4;
+  --muted: #14263a;
+  --muted-foreground: #9db0c2;
+  --accent: #1b3049;
+  --accent-foreground: #e6edf4;
+  --destructive: #f0907f;
+  --border: #284058;
+  --input: #5f7a94;
+  --line-control: #5f7a94;
+  --ring: #3cc1bb;
+  --violet: #3cc1bb;
+  --violet-soft: #12403f;
+  --violet-ink: #6fd8d3;
+  --ember: #f0a04b;
+  --ember-soft: #43300f;
+  --ember-ink: #f7c283;
+  --soft-sm: 0 0 0 1px rgb(0 0 0 / 0.3);
+  --soft-md: 0 0 0 1px rgb(0 0 0 / 0.3), 0 1px 2px rgb(0 0 0 / 0.2);
+  --soft-lg:
+    0 0 0 1px rgb(0 0 0 / 0.3), 0 4px 8px rgb(0 0 0 / 0.2),
+    0 24px 56px rgb(0 0 0 / 0.4);
+  --pressed: inset 0 0 0 1px rgb(0 0 0 / 0.25);
+  --ink-glow: 0 1px 2px rgb(0 0 0 / 0.3);
+  --chart-1: #3cc1bb;
+  --chart-2: #e6edf4;
+  --chart-3: #5f7a94;
+  --chart-4: #9db0c2;
+  --chart-5: #f0a04b;
+  --viz-series: #3cc1bb;
+  --viz-good: #3cc1bb;
+  --viz-warning: #f0a04b;
+  --viz-critical: #f0907f;
+  --viz-grid: #284058;
+  --syntax-address: #6fd8d3;
+  --syntax-directive: #8fb8ee;
+  --syntax-string: #8fd19e;
+  --syntax-placeholder: #f0a04b;
+  --syntax-matcher: #e58ac6;
+  --syntax-snippet: #e8b75c;
+  --syntax-muted: #8aa0b5;
+  --sidebar: #0f2236;
+  --sidebar-foreground: #e6edf4;
+  --sidebar-primary: #e6edf4;
+  --sidebar-primary-foreground: #0b1724;
+  --sidebar-accent: #1b3049;
+  --sidebar-accent-foreground: #e6edf4;
+  --sidebar-border: #284058;
+  --sidebar-ring: #3cc1bb;
+  --status-error: #f0907f;
+  --status-error-soft: #3d1a17;
 }
 
 @layer base {
@@ -222,12 +396,16 @@
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
   }
+  html[data-design="schematic"] {
+    letter-spacing: normal;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 @layer components {
   /* Raised surface: the standard card. */
   .surface {
-    @apply rounded-3xl bg-card text-card-foreground shadow-soft-md;
+    @apply rounded-3xl bg-card text-card-foreground shadow-soft-md schematic:border schematic:border-border schematic:shadow-none;
   }
   /* Flat band one step below the page, for grouped or secondary content. */
   .surface-band {
@@ -235,11 +413,16 @@
   }
   /* Recessed track for segmented controls and inputs. */
   .surface-pressed {
-    @apply rounded-full bg-stone shadow-pressed;
+    @apply rounded-full bg-stone shadow-pressed schematic:rounded-lg schematic:shadow-none;
   }
   /* Native select/textarea in the input style: a soft recess. */
   .field {
-    @apply rounded-md border border-line-control/60 bg-card shadow-pressed transition-[border-color,box-shadow] duration-200 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/35;
+    @apply rounded-md border border-line-control/60 bg-card shadow-pressed transition-[border-color,box-shadow] duration-200 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/35 schematic:border-line-control schematic:shadow-none;
+  }
+  /* Hosts, IPs and upstream addresses: monospace of the active design. */
+  .mono {
+    @apply font-mono text-[0.9em] tracking-normal;
+    font-variant-numeric: tabular-nums;
   }
   /* Caddyfile syntax colors (see lib/caddyfile-highlight.ts); color only, so
      the editor overlay keeps the textarea's glyph widths. */
@@ -272,10 +455,10 @@
     @apply rounded-lg bg-band font-mono text-[0.8125rem] leading-relaxed;
   }
   .display {
-    @apply font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] md:text-[2.75rem];
+    @apply font-display text-[2.25rem] leading-[1.1] font-light tracking-[-0.02em] md:text-[2.75rem] schematic:text-[1.875rem] schematic:leading-[1.15] schematic:font-bold schematic:tracking-[-0.025em] schematic:md:text-[2.125rem];
   }
   .heading {
-    @apply font-display text-[1.375rem] leading-tight font-light tracking-[-0.015em];
+    @apply font-display text-[1.375rem] leading-tight font-light tracking-[-0.015em] schematic:text-xl schematic:font-semibold schematic:tracking-[-0.01em];
   }
   .eyebrow {
     @apply text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase;

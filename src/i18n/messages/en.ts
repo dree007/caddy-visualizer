@@ -52,6 +52,7 @@ export const en = {
     light: "Light",
     dark: "Dark",
     language: "Language",
+    design: "Design",
     logout: "Log out",
     settings: "Appearance and language",
   },
@@ -98,6 +99,54 @@ export const en = {
     requestsPerHour: "Requests per hour",
     certificatesHeading: "Certificates",
     allCertificates: "All certificates",
+    chartLegend: "Red dots: periods with server errors, sized by count",
+    headline: "Where Caddy forwards",
+    lead: {
+      "24h": "Line thickness shows the requests of the last 24 hours.",
+      "7d": "Line thickness shows the requests of the last 7 days.",
+      "30d": "Line thickness shows the requests of the last 30 days.",
+    },
+    revision: (n: number) => `Caddy runs revision #${n}.`,
+    schematic: {
+      hosts: "Hostnames",
+      proxy: "Reverse proxy",
+      upstreams: "Upstreams",
+      requests: (n: string) => `${n} requests`,
+      errors: (n: string) => `${n} × 5xx`,
+      moreHosts: (n: number) => `${n} more ${n === 1 ? "host" : "hosts"}`,
+      moreUpstreams: (n: number) =>
+        `${n} more ${n === 1 ? "upstream" : "upstreams"}`,
+      alt: (hosts: number, upstreams: number, requests: string) =>
+        `${plural(hosts, "host", "hosts")} forwarded through Caddy to ${plural(upstreams, "upstream", "upstreams")}, ${requests} requests in total.`,
+      altRow: (name: string, requests: string, errors: string) =>
+        `${name}: ${requests} requests${errors ? `, ${errors}` : ""}`,
+      estimated:
+        "Where the access log names no upstream, a host's requests are split evenly across its configured upstreams.",
+      noUpstreams:
+        "No upstream is known for these hosts yet. Proxy sites show their targets here.",
+      clipped:
+        "Per-upstream data is kept for 14 days: line widths and 5xx marks at the upstreams cover at most the last 14 days, host figures the selected period.",
+    },
+    events: {
+      heading: "Latest events",
+      empty: "No events yet.",
+      serverErrors: "Server errors (5xx)",
+      serverErrorsDetail: (period: string, n: string) =>
+        `${period}, ${n} requests`,
+      revisionApplied: (n: number) => `Revision #${n} applied`,
+      revisionFailed: (n: number) => `Revision #${n} failed`,
+      revisionOpen: (n: number) => `Revision #${n} not settled`,
+      logRead: "Access log read",
+      logReadDetail: (when: string, n: string) => `${when}, ${n} new entries`,
+    },
+    statusPerHost: {
+      heading: "Status codes per host",
+      host: "Host",
+      distribution: "Distribution",
+      errors4xx: "4xx",
+      errors5xx: "5xx",
+      more: (n: number) => `${n} more hosts in the metrics`,
+    },
   },
   certificates: {
     title: "Certificates",
@@ -224,6 +273,8 @@ export const en = {
       period: "Period",
       requestsColumn: "Requests",
       errorsColumn: "Server errors",
+      errorMarks:
+        "Dots: hours with server errors, size grows with the count. All values in the table.",
       hourLabel: (label: string) => label,
     },
     status: {
@@ -317,6 +368,15 @@ export const en = {
   settings: {
     title: "Settings",
     proxyAuth: "Authentication is managed by an external reverse proxy.",
+    design: {
+      heading: "Design",
+      description:
+        "Choose how Caddy Visualizer looks. Light and dark mode work in both designs and are set separately.",
+      classic: "Classic",
+      classicHint: "Warm paper, rounded shapes.",
+      schematic: "Schematic",
+      schematicHint: "Cool grey-white, navy and petrol, like a wiring diagram.",
+    },
     moreTitle: "More settings to come",
     moreText:
       "Account and retention settings will live here. Appearance, language and logout are in the account menu.",
@@ -357,24 +417,70 @@ export const en = {
   },
   config: {
     title: "Caddy Config",
-    heading: "Sites",
+    /** Texts of the "Klassisch" design (the Config page as on main). */
+    classic: {
+      heading: "Sites",
+      intro:
+        "Caddy reads its sites from two equal sources: your Caddyfile and the form sites. You edit both here.",
+      caddyfileCard: {
+        title: "Caddyfile",
+        text: "Sites you write yourself, with everything Caddy can do.",
+        action: "Edit Caddyfile",
+      },
+      formCard: {
+        title: "Form sites",
+        text: "Reverse proxies and redirects by form, written to sites.caddy.",
+        none: "No form sites yet",
+        count: (n: number, enabled: number) =>
+          `${plural(n, "site", "sites")}, ${enabled} enabled`,
+        action: "Add site",
+      },
+      siteCount: (n: number) => plural(n, "site", "sites"),
+      formSitesHeading: "Form sites",
+    },
+    heading: "Routes",
     intro:
-      "Caddy reads its sites from two equal sources: your Caddyfile and the form sites. You edit both here.",
-    caddyfileCard: {
-      title: "Caddyfile",
-      text: "Sites you write yourself, with everything Caddy can do.",
-      action: "Edit Caddyfile",
-    },
-    formCard: {
-      title: "Form sites",
-      text: "Reverse proxies and redirects by form, written to sites.caddy.",
-      none: "No form sites yet",
+      "Each row is a hostname Caddy forwards to a target. Form sites are edited here, everything else in the Caddyfile.",
+    openCaddyfile: "Open Caddyfile",
+    routes: {
+      label: "Routes",
+      sourceCaddyfile: "Caddyfile",
+      sourceForm: "Form",
+      line: (n: number) => `Line ${n}`,
+      lineLabel: (n: number, host: string) => `${host}: Caddyfile, line ${n}`,
       count: (n: number, enabled: number) =>
-        `${plural(n, "site", "sites")}, ${enabled} enabled`,
-      action: "Add site",
+        `${plural(n, "form site", "form sites")}, ${enabled} enabled`,
     },
-    siteCount: (n: number) => plural(n, "site", "sites"),
-    formSitesHeading: "Form sites",
+    inline: {
+      heading: "New route",
+      hostname: "Hostname",
+      hostnamePlaceholder: "blog.example.lan",
+      target: "Target",
+      targetPlaceholder: "http://192.0.2.30:2368",
+      tls: "TLS",
+      submit: "Create route",
+      submitting: "Creating …",
+      more: "More options",
+      error: "The route could not be created.",
+    },
+    pending: {
+      heading: "Pending",
+      intro:
+        "Caddy checks everything before it goes live. If the check fails, the running revision stays active.",
+      empty: "Nothing pending. Caddy runs what is stored.",
+      emptyUnconfigured: "No Caddy connection – there is nothing to apply.",
+      draft: "New route",
+      draftNote: "not created yet",
+      kinds: {
+        added: "New route",
+        removed: "Removed",
+        enabled: "Enabled",
+        disabled: "Disabled",
+        changed: "Changed",
+      },
+      base: (n: number) => `Base: revision #${n}`,
+      baseNone: "Base: nothing applied yet",
+    },
     notices: {
       created: (host: string) => `${host} was created.`,
       updated: (host: string) => `Changes to ${host} were saved.`,

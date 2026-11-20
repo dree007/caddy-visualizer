@@ -47,7 +47,7 @@ export function CaddyfileEditor({
         {c.content}
       </label>
       {/* The highlighted copy lies under the textarea, whose own text is transparent. */}
-      <div className="field relative overflow-hidden focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/35">
+      <div className="field relative overflow-hidden bg-band/40 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/35">
         <pre
           ref={highlight}
           aria-hidden
@@ -163,7 +163,7 @@ function Result({ result, t }: { result: CaddyfileEditorResult; t: Messages }) {
 function Warnings({ warnings }: { warnings: string[] }) {
   if (warnings.length === 0) return null;
   return (
-    <ul className="flex flex-col gap-1 text-sm text-amber-700 dark:text-amber-400">
+    <ul className="flex flex-col gap-1 text-sm text-ember-ink">
       {warnings.map((warning, index) => (
         <li key={index} className="font-mono text-xs">
           {warning}
@@ -175,7 +175,7 @@ function Warnings({ warnings }: { warnings: string[] }) {
 
 const DIFF_CLASSES = {
   same: "text-muted-foreground",
-  added: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  added: "bg-(--viz-good)/10 text-(--viz-good)",
   removed: "bg-destructive/10 text-destructive",
 } as const;
 const DIFF_PREFIX = { same: " ", added: "+", removed: "-" } as const;

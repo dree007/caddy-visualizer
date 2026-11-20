@@ -19,7 +19,7 @@ export const STATUS: Record<StatusClass, { color: string; icon: LucideIcon }> =
   {
     "2xx": { color: "var(--viz-good)", icon: CircleCheck },
     "3xx": { color: "var(--viz-neutral)", icon: CornerUpRight },
-    "4xx": { color: "var(--viz-warning)", icon: TriangleAlert },
+    "4xx": { color: "var(--ember)", icon: TriangleAlert },
     "5xx": { color: "var(--viz-critical)", icon: CircleX },
   };
 
@@ -36,14 +36,17 @@ export async function StatusBreakdown({ totals }: { totals: MetricsTotals }) {
   }
   return (
     <div className="surface flex flex-col gap-5 p-5 md:p-7">
-      <div aria-hidden className="flex h-3 gap-[2px]">
+      <div
+        aria-hidden
+        className="flex h-3 overflow-hidden rounded-full bg-stone"
+      >
         {STATUS_CLASSES.filter((c) => totals.byClass[c] > 0).map((c) => (
           <span
             key={c}
-            className="h-full rounded-full"
+            className="h-full"
             style={{
               width: `${(totals.byClass[c] / total) * 100}%`,
-              minWidth: 6,
+              minWidth: 4,
               background: STATUS[c].color,
             }}
           />

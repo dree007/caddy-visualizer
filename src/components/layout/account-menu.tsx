@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useTransition } from "react";
 
+import { DesignMenuGroup } from "@/components/design/design-switcher";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -38,7 +39,7 @@ export function AccountMenu({ username }: { username: string | null }) {
           size="icon"
           aria-label={username ? t.account.menu(username) : t.account.settings}
           disabled={loggingOut}
-          className="size-10 pointer-coarse:size-11"
+          className="size-10 pointer-coarse:size-11 schematic:rounded-full schematic:border-input"
         >
           {loggingOut ? (
             <Spinner className="size-4" />
@@ -92,6 +93,7 @@ export function AccountMenu({ username }: { username: string | null }) {
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
+        <DesignMenuGroup />
         {username ? (
           <>
             <DropdownMenuSeparator />
